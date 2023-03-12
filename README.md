@@ -3,8 +3,7 @@
  
 ## Main features:
 
-It is designed for user to concentrate on writing a test scenario, and tests organization is automatically completed by compiler. By the way, it follows the KISS principle so as to easily read and extend.
-Each test unit is a natural structure or class, so no “strange” test fixture.
+It is designed for user to concentrate on writing a test scenario, and tests organization is automatically completed by compiler. Each test unit is a natural structure or class, so no “strange” test fixture.
 
 1. No configuration, just a header file.
 2. No concept to learn, no heavy documentation.
