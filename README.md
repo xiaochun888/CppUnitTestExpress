@@ -19,7 +19,7 @@ void _assert(const A& expression, const char* shouldbe=0, ...)
 ## A minimal example:
 
 The below code snippet demonstrates the least amount of code required to write an executable test: 
-<code>
+```
 /* Add this header file into your project */
 #include "CppUnitTestExpress.h"
 
@@ -51,4 +51,4 @@ int main(int argc, char* argv[])
 	ut.runAll();
 	return ut.resume();
 }
-</code>
+```
