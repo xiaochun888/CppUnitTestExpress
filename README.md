@@ -9,7 +9,7 @@ Each test unit is a natural structure or class, so no “strange” test fixture
 1. No configuration, just a header file.
 2. No concept to learn, no heavy documentation.
 3. No test macro, so no pitfall of macro possible.
-4. Neither graphic interface nor extern library, but extensible easily.
+4. Neither graphic interface nor extern library, so no additional runtime overhead and overload.
 5. Auto-registration, auto-grouping in compile-time.
 
 ## Assertions:
