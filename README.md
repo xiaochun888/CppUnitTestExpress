@@ -9,13 +9,14 @@ Each test unit is a natural structure or class, so no “strange” test fixture
 1. No configuration, just a header file.
 2. No concept to learn, no heavy documentation.
 3. No test macro, so no pitfall of macro possible.
-4. No graphic interface and library, so no runtime overhead and overload.
+4. Neither graphic interface nor extern library, but extensible easily.
 5. Auto-registration, auto-grouping in compile-time.
 
 ## Assertions:
-
-void _assert(const A& expression, const char* shouldbe=0, ...)
-
+```
+template <class A>
+static void _assert(const A& expression, const char* shouldbe=0, ...);
+```
 ## A minimal example:
 
 The below code snippet demonstrates the least amount of code required to write an executable test: 
