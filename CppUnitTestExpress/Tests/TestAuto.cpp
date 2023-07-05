@@ -4,15 +4,15 @@ class TestAuto : public Unit<TestAuto> {
 public:
 	virtual void Test() {
 		const char* const_chars = "";
-		char const * chars_const = "";
-		char * chars = "";
+		char const* chars_const = "";
+		char* chars = "";
 		char char_arr[10] = "";
 		char char_arr2[20] = "";
 
 		std::string std_str = "";
-		wchar_t * wcs_str = L"";
-		const wchar_t * const_wcs_str = L"";
-		wchar_t const * wcs_str_const = L"";
+		wchar_t* wcs_str = L"";
+		const wchar_t* const_wcs_str = L"";
+		wchar_t const* wcs_str_const = L"";
 
 		//Value Comparaison 
 		UnitTest::_assert(const_chars == "", "const char*");
@@ -51,7 +51,7 @@ public:
 		float ft = 1.0;
 		int it = 1;
 		unsigned ut = 1;
-		UnitTest::_assert(ft==it, "ft is equal to it");
+		UnitTest::_assert(ft == it, "ft is equal to it");
 
 		//Expression Comparaison
 		UnitTest::_assert(ft == it, "ft == it");
@@ -68,11 +68,19 @@ public:
 		UnitTest::_assert(char_arr != char_arr2, "char [10] != char [20]");
 		UnitTest::_assert(char_arr2 < char_arr, "char [20] < char [10]");
 		UnitTest::_assert(char_arr == char_arr, "char [10] == char [10]");
-		UnitTest::_assert("11:35" <= "12:00",  "11:35 < 12:00");
-		UnitTest::_assert("11:35" < "12:00",  "11:35 < 12:00");
+		UnitTest::_assert("11:35" <= "12:00", "11:35 < 12:00");
+		UnitTest::_assert("11:35" < "12:00", "11:35 < 12:00");
 
 		std::string str = "11:35";
-		UnitTest::_assert(str < "12:00",  "11:35 < 12:00");
-		_assert(str > "11:00",  "11:35 > 11:00");
+		UnitTest::_assert(str < "12:00", "11:35 < 12:00");
+		_assert(str > "11:00", "11:35 > 11:00");
 	}
 };
+
+//The most simple test
+struct TestAuto1 : public Unit<TestAuto1> {
+	void Test() {
+		_assert(1 > 0, "It is true");
+	}
+};
+

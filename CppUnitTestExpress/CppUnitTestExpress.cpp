@@ -7,7 +7,7 @@
 int _tmain(int argc, _TCHAR* argv[])
 {
 	UnitTest ut;
-	ut.runAll();
+	ut.runAll("Test*");
 	ut.resume();
 	return ut.result();
 }

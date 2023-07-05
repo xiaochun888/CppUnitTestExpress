@@ -5,10 +5,10 @@
 
 It is designed for user to concentrate on writing a test scenario, and tests organization is automatically completed by compiler. Each test unit is a natural structure or class, so no “strange” test fixture.
 
-1. No configuration, just a header file.
-2. No concept to learn, no heavy documentation.
-3. No test macro, so no pitfall of macro possible.
-4. Neither graphic interface nor extern library, so no additional runtime overhead and overload.
+1. Only a header file, only use C++ compiler.
+2. Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
+3. No concept to learn, no heavy documentation, just one assert tool.
+4. No config, no test macro, no graphic interface, no extrernal library.
 5. Auto-registration, auto-grouping in compile-time.
 
 ## Assertions:
@@ -34,8 +34,7 @@ public:
 
 	void Test()
 	{
-		/* Assert : _assert, _ignore */
-		_ignore("Code snippet","Not implemented.");
+		_assert(true,"Not implemented.");
 	}
 
 	~TestOne()

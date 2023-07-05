@@ -6,8 +6,8 @@
 *		
 * Designed:
 	* Only a header file, only use C++ compiler
-    * Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
- 	* No config, no test macro, no graphic interface, no extrernal library
+	* Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
+	* No config, no test macro, no graphic interface, no extrernal library
 	* Auto record, grouping by keyword, extended easily
 * How to do:
 	Please see an example in the end of this page.
@@ -31,8 +31,6 @@
 #include <windows.h>
 #pragma warning (disable:4996)
 #endif
-
-using namespace std;
 
 #define UNIT_TEST_RESULTS \
 X(OK, "Success") \
@@ -118,14 +116,34 @@ public:
 			char output[4096]={0};
 			vsprintf(output, format, body);
 			OutputDebugStringA(output);
-			#else
-			vprintf(format, body);
 			#endif
+
+			vprintf(format, body);
 
 			va_end(body);
 		};
 	}
 
+	//Match wild card characters  ?  and  *.
+	bool wcMatch(const char* str, const char* pattern)
+	{
+		if (*pattern == '\0' && *str == '\0')
+			return true;
+
+		if (*pattern == '*')
+			while (*(pattern + 1) == '*') pattern++;
+
+		if (*pattern == '*' && *(pattern + 1) != '\0' && *str == '\0')
+			return false;
+
+		if (*pattern == '?' || *pattern == *str)
+			return wcMatch(str + 1, pattern + 1);
+
+		if (*pattern == '*')
+			return wcMatch(str, pattern + 1) || wcMatch(str + 1, pattern);
+
+		return false;
+	}
 	/*****************************************************************************
 	* Test assert
 	* Use strcmp() or wcscmp() to compare deux arrays of characters.
@@ -148,20 +166,6 @@ public:
 		};
 	}
 
-	template <class A>
-	static void _ignore(const A&, const char* shouldbe=0,...)
-	{
-		char what[4096]={0};
-		if(shouldbe)
-		{
-			va_list body;
-			va_start(body, shouldbe);
-			vsprintf(what, shouldbe, body);
-			va_end(body);
-		};
-		throw UnitTest(UnitTest::GN, what);
-	}
-
 	/*****************************************************************************
 	* Test report
 	******************************************************************************/
@@ -171,7 +175,7 @@ public:
 		return worst;
 	}
 
-	virtual void report(string unitName)
+	virtual void report(std::string unitName)
 	{
 		dprintf("\t%s : %s - %s\n",
 				unitName.c_str(), 
@@ -195,17 +199,18 @@ public:
 	******************************************************************************/
 	virtual void runAll()
 	{
-		map<std::string, func>::iterator it;
+		std::map<std::string, func>::iterator it;
 		for (it = unitTests().begin(); it != unitTests().end(); it++){
 			it->second(this);
 		}
 	}
 
-	virtual void runAll(string keyword)
+	//pattern possiblly includes the wildcard characters  ?  and  *.
+	virtual void runAll(std::string pattern)
 	{
-		map<std::string, func>::iterator it;
+		std::map<std::string, func>::iterator it;
 		for (it = unitTests().begin(); it != unitTests().end(); it++){
-			if(it->first.find(keyword) != string::npos) {
+			if(wcMatch(it->first.c_str(), pattern.c_str())) {
 				it->second(this);
 			}
 		}
@@ -217,11 +222,11 @@ protected:
 	int state;
 	int worst;
 	long elapsed;
-	string what;
+	std::string what;
 
 	typedef void (*func)(UnitTest* _this);
-	static map<string, func>& unitTests() {
-		static map<string, func> tests;
+	static std::map<std::string, func>& unitTests() {
+		static std::map<std::string, func> tests;
 		return tests;
 	}
 };
@@ -238,10 +243,10 @@ public:
 	}
 
 protected:
-	static string name()
+	static std::string name()
 	{
-		string className = typeid(T).name();
-		string typeName = className.substr(0, 6);
+		std::string className = typeid(T).name();
+		std::string typeName = className.substr(0, 6);
 		if(typeName == "struct") return className.substr(7); //remove "struct "
 		return className.substr(6); //remove "class "
 	}
@@ -249,8 +254,8 @@ protected:
 	static void runTest(UnitTest* _this)
 	{
 		int which=0;
-		string what = "Exception in ";
-		_this->elapsed=_this->usElapse(0);
+		std::string what = "Exception in ";
+		long elapsed = _this->usElapse(0);
 
 		try
 		{
@@ -260,7 +265,9 @@ protected:
 			T t;
 
 			which=UnitTest::EX; what+="Test()";
-			t.Test();
+			//To access private method Test()
+			Unit<T>* p = &t;
+			p->Test();
 
 			which=UnitTest::ZB; what+="~"+name()+"()";
 		}
@@ -272,7 +279,8 @@ protected:
 				return;
 			}
 
-			_this->elapsed=usElapse(_this->elapsed);
+			elapsed=usElapse(elapsed);
+			_this->elapsed += elapsed;
 			_this->state=e.state;
 			_this->result();
 
@@ -282,7 +290,8 @@ protected:
 		}
 		catch(...)
 		{
-			_this->elapsed=usElapse(_this->elapsed);
+			elapsed=usElapse(elapsed);
+			_this->elapsed += elapsed;
 			_this->state=which;
 			_this->result();
 
@@ -291,12 +300,13 @@ protected:
 			return;
 		}
 
-		_this->elapsed=usElapse(_this->elapsed);
+		elapsed=usElapse(elapsed);
+		_this->elapsed += elapsed;
 		_this->state=UnitTest::OK;
 		_this->result();
 
 		char desc[1024] = {0};
-		sprintf(desc,"Test OK, time elapsed %ld ms", _this->elapsed);
+		sprintf(desc,"Test OK, time elapsed %ld ms", elapsed);
 		_this->what = desc;
 		_this->report(name().c_str());
 	}
