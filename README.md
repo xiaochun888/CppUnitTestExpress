@@ -24,22 +24,11 @@ The below code snippet demonstrates the least amount of code required to write a
 #include "CppUnitTestExpress.h"
 
 /* Write a unit test given a name. */
-class TestOne : public Unit<TestOne>
+struct TestMinimal : Unit<TestMinimal>
 {
-public:
-	TestOne()
-	{
-		/* Set up */
-	}
-
 	void Test()
 	{
-		_assert(true,"Not implemented.");
-	}
-
-	~TestOne()
-	{
-		/* Tear down */
+		_assert(true,"It is true.");
 	}
 };
 
