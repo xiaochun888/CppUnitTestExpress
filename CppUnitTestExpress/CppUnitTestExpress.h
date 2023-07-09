@@ -186,7 +186,7 @@ public:
 	virtual int resume()
 	{
 		dprintf("\t----------------------------------------\n"
-				"\tExecuted: %d unit(s), %ld ms\n"
+				"\tExecuted: %d unit(s), %ld us\n"
 				"\tResulted: %s\n\n",
 				units,
 				elapsed,
@@ -306,7 +306,7 @@ protected:
 		_this->result();
 
 		char desc[1024] = {0};
-		sprintf(desc,"Test OK, time elapsed %ld ms", elapsed);
+		sprintf(desc,"Test OK, time elapsed %ld us", elapsed);
 		_this->what = desc;
 		_this->report(name().c_str());
 	}
@@ -348,8 +348,7 @@ public:
 
 	void Test()
 	{
-		/* Assert : _assert, _ignore */
-		_ignore("Code snippet","Not implemented.");
+		_assert(true, "It is true.");
 	}
 
 	~TestOne()

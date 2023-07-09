@@ -77,10 +77,10 @@ public:
 	}
 };
 
-//The most simple test
-struct TestAuto1 : public Unit<TestAuto1> {
+//The minimal test
+struct TestMinimal : public Unit<TestMinimal> {
 	void Test() {
-		_assert(1 > 0, "It is true");
+		_assert(true, "It is true.");
 	}
 };
 
