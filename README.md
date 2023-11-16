@@ -1,5 +1,5 @@
 # CppUnitTestExpress
- A minimal and cross-platform unit test framework for C++, CuteX for short.
+ A enough simple and cross-platform unit test framework for C++, CuteX for short.
  
 ## Main features:
 
@@ -9,7 +9,7 @@ It is designed for user to concentrate on writing a test scenario, and tests org
 2. Any member method or function can be tested.
 3. No concept to learn, no heavy documentation, just one assert tool.
 4. No config, no test macro, no graphic interface, no extrernal library.
-5. Auto-registration, auto-grouping in compile-time.
+5. One test or a group of tests can be executed by name in wild card.
 6. extended easily and integrated easily into an application.
 
 ## Assertions:
