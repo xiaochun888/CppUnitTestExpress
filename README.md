@@ -12,7 +12,7 @@ It is designed for user to concentrate on writing a test scenario, and tests org
 3. No concept to learn, no heavy documentation, just one assert tool.
 4. No config, no test macro, no graphic interface, no extrernal library.
 5. One test or a group of tests can be executed by name in wild card.
-6. extended easily and integrated easily into an application.
+6. Extended easily and integrated easily into an application.
 
 ## Assertions:
 ```
