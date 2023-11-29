@@ -78,7 +78,7 @@ public:
 };
 
 //The minimal test
-struct TestMinimal : Unit<TestMinimal> {
+struct TestMinimal : public Unit<TestMinimal> {
 	void Test() {
 		_assert(true, "It is true.");
 	}
