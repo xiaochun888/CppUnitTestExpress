@@ -254,22 +254,22 @@ protected:
 	static void runTest(UnitTest* _this)
 	{
 		int which=0;
-		std::string what = "Exception in ";
+		std::string what="";
 		long elapsed = _this->usElapse(0);
 
 		try
 		{
 			++_this->units;
 
-			which=UnitTest::BT; what+=name()+"()";
+			which=UnitTest::BT; what=name()+"()";
 			T t;
 
-			which=UnitTest::EX; what+="Test()";
+			which=UnitTest::EX; what="Test()";
 			//To access private method Test()
 			Unit<T>* p = &t;
 			p->Test();
 
-			which=UnitTest::ZB; what+="~"+name()+"()";
+			which=UnitTest::ZB; what="~"+name()+"()";
 		}
 		catch(UnitTest& e)
 		{
@@ -295,7 +295,7 @@ protected:
 			_this->state=which;
 			_this->result();
 
-			_this->what = what;
+			_this->what="Exception in "+what;
 			_this->report(name().c_str());
 			return;
 		}
