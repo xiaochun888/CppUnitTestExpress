@@ -34,9 +34,8 @@
 
 #define UNIT_TEST_RESULTS \
 X(OK, "Success") \
-X(GN, "Ignored") \
-X(ZB, "TearDown") \
-X(BT, "SetUp") \
+X(ZB, "Teardown failed") \
+X(BT, "Setup failed") \
 X(EX, "Exception") \
 X(KO, "Failed")
 
