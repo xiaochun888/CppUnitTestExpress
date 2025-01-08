@@ -32,99 +32,209 @@
 #pragma warning (disable:4996)
 #endif
 
-#define UNIT_TEST_RESULTS \
-X(OK, "Success") \
-X(ZB, "Teardown failed") \
-X(BT, "Setup failed") \
-X(EX, "Exception") \
-X(KO, "Failed")
-
-static const char* UNIT_TEST_RESULT_TEXT[] =
-{
-	#define X(e, s) (const char*)s,
-	UNIT_TEST_RESULTS
-	#undef X
-};
+#define UNIT_TEST_STATES \
+X(SUCCESS, "Success") \
+X(COMMENT, "Comment") \
+X(SETTING, "Setting") \
+X(TESTING, "Testing") \
+X(TEARING, "Tearing") \
+X(UNKNOWN, "Unknown") \
+X(FAILURE, "Failure")
 
 class UnitTest
 {
 public:
+	enum STATE {
+		#define X(e, s) e,
+			UNIT_TEST_STATES
+		#undef X
+	};
+
+	static const char* stateText(STATE state) {
+		#define X(e, s) if(e==state) return(const char*)s;
+			UNIT_TEST_STATES
+		#undef X
+		return "";
+	};
+
 	/*****************************************************************************
 	* Initialization
 	******************************************************************************/
 	UnitTest()
 	{
-		units=0;
-		state=0;
-		worst=0;
-		elapsed=0;
-		what="";
-	};
-
-	UnitTest(int state, const char* what)
-	{
-		UnitTest();
-		this->state=state;
-		this->what=what;
-		result();
+		initialize();
 	}
 
-	enum {
-		#define X(e, s) e,
-			UNIT_TEST_RESULTS
-		#undef X
-	};
+	UnitTest(STATE state, std::string what)
+	{
+		initialize(state, what);
+	}
 
 	/*****************************************************************************
 	* Utilities
 	******************************************************************************/
+	static void dprintf(const char* format, ...)
+	{
+		if (format)
+		{
+			va_list args;
+			va_start(args, format);
+			vprintf(format, args);
+
+			#if defined(_WIN32)
+				OutputDebugStringA(vssprintf(format, args).c_str());
+			#endif
+
+			va_end(args);
+		};
+	}
+
 	static long usElapse(long uold)
 	{
 		#ifdef _WIN32
-		struct timeval 
-		{
-		  long tv_sec;
-		  long tv_usec;
-		} tv;
+			struct timeval
+			{
+				long tv_sec;
+				long tv_usec;
+			} tv;
 
-		FILETIME time;
-		double   timed;
-		
-		GetSystemTimeAsFileTime( &time );
-		timed = ((time.dwHighDateTime * 4294967296e-7) - 11644473600.0) +
-				(time.dwLowDateTime  * 1e-7);
-		
-		tv.tv_sec  = (long) timed;
-		tv.tv_usec = (long) ((timed - tv.tv_sec) * 1e6);
+			FILETIME time;
+			GetSystemTimeAsFileTime(&time);
+
+			double timed = ((time.dwHighDateTime * 4294967296e-7) - 11644473600.0) +
+				(time.dwLowDateTime * 1e-7);
+
+			tv.tv_sec = (long)timed;
+			tv.tv_usec = (long)((timed - tv.tv_sec) * 1e6);
 		#else
-		struct timeval tv;
-		gettimeofday(&tv,NULL);
+			struct timeval tv;
+			gettimeofday(&tv, NULL);
 		#endif
 
 		return (tv.tv_sec * 1000000 + tv.tv_usec - uold);
 	}
 
-	static void dprintf(const char* format, ...)
+	/*****************************************************************************
+	* Test assert
+	* Use strcmp() or wcscmp() to compare deux arrays of characters.
+	******************************************************************************/
+	template <class A>
+	static void _assert(const A& expression, const char* shouldbe = 0, ...)
 	{
-		if(format)
+		if (!expression)
 		{
-			va_list body;
-			va_start(body, format);
+			std::string what;
+			if (shouldbe)
+			{
+				va_list args;
+				va_start(args, shouldbe);
+				what = vssprintf(shouldbe, args);
+				va_end(args);
+			};
 
-			#if defined(_WIN32)
-			char output[4096]={0};
-			vsprintf(output, format, body);
-			OutputDebugStringA(output);
-			#endif
-
-			vprintf(format, body);
-
-			va_end(body);
+			throw UnitTest(FAILURE, what);
 		};
 	}
 
+	/*****************************************************************************
+	* Test report
+	******************************************************************************/
+	virtual void report(std::string name, STATE state, std::string what)
+	{
+		whats += ssprintf("\t%s : %s - %s\n", stateText(state), name.c_str(), what.c_str());
+	}
+
+	virtual int resume()
+	{
+		time_t now = time(0);
+		struct tm tmLocal = *localtime(&now);
+		char sDateISO[sizeof "2022-08-23T10:40:20Z"];
+		strftime(sDateISO, sizeof sDateISO, "%Y-%m-%d %H:%M:%S", &tmLocal);
+
+		dprintf(whats.c_str());
+		dprintf("\t----------------------------------------\n"
+				"\tExecuted: %d %s, %lgs at %s\n"
+				"\tResulted: %s\n\n",
+				units,
+				units > 1 ? "units":"unit",
+				elapsed / 1e6,
+				sDateISO,
+				stateText(worst));
+		return worst;
+	}
+
+	/*****************************************************************************
+	* Test execution
+	******************************************************************************/
+	virtual void runAll()
+	{
+		std::map<std::string, func>::iterator it;
+		for (it = runTests().begin(); it != runTests().end(); it++){
+			it->second(this);
+		}
+	}
+
+	//pattern possiblly includes the wildcard characters  ?  and  *.
+	virtual void runAll(std::string pattern)
+	{
+		std::map<std::string, func>::iterator it;
+		for (it = runTests().begin(); it != runTests().end(); it++){
+			if(wcMatch(it->first.c_str(), pattern.c_str())) {
+				it->second(this);
+			}
+		}
+	}
+
+	template <class T> friend class Unit;
+protected:
+	int units;
+	long elapsed;
+	STATE worst;
+	std::string whats;
+
+	void initialize(STATE state = SUCCESS, std::string what = "")
+	{
+		units = 0;
+		elapsed = 0;
+		worst = state;
+		whats = what;
+	}
+
+	int result(STATE state)
+	{
+		if (state > worst) worst = state;
+		return worst;
+	}
+
+	static std::string vssprintf(const char* format, va_list args)
+	{
+		std::string sOut;
+		if (format)
+		{
+			int size = vsnprintf(0, 0, format, args) + 1;
+			char* buf = new char[size];
+			vsnprintf(buf, size, format, args);
+			sOut = buf;
+			delete[] buf;
+		};
+		return sOut;
+	}
+
+	static std::string ssprintf(const char* format, ...)
+	{
+		std::string sOut;
+		if (format)
+		{
+			va_list args;
+			va_start(args, format);
+			sOut = vssprintf(format, args);
+			va_end(args);
+		};
+		return sOut;
+	}
+
 	//Match wild card characters  ?  and  *.
-	bool wcMatch(const char* str, const char* pattern)
+	static bool wcMatch(const char* str, const char* pattern)
 	{
 		if (*pattern == '\0' && *str == '\0')
 			return true;
@@ -143,90 +253,11 @@ public:
 
 		return false;
 	}
-	/*****************************************************************************
-	* Test assert
-	* Use strcmp() or wcscmp() to compare deux arrays of characters.
-	******************************************************************************/
-	template <class A>
-	static void _assert(const A& expression, const char* shouldbe=0, ...)
-	{
-		if(!expression)
-		{ 
-			char what[4096]={0};
-			if(shouldbe)
-			{
-				va_list args;
-				va_start(args, shouldbe);
-				vsprintf(what, shouldbe, args);
-				va_end(args);
-			};
-
-			throw UnitTest(UnitTest::KO, what);
-		};
-	}
-
-	/*****************************************************************************
-	* Test report
-	******************************************************************************/
-	virtual int result()
-	{
-		if(state>worst) worst=state;
-		return worst;
-	}
-
-	virtual void report(std::string unitName)
-	{
-		dprintf("\t%s : %s - %s\n",
-				unitName.c_str(), 
-				UNIT_TEST_RESULT_TEXT[state],
-				what.c_str());
-	}
-
-	virtual int resume()
-	{
-		dprintf("\t----------------------------------------\n"
-				"\tExecuted: %d unit(s), %ld us\n"
-				"\tResulted: %s\n\n",
-				units,
-				elapsed,
-				UNIT_TEST_RESULT_TEXT[worst]);
-		return worst;
-	}
-
-	/*****************************************************************************
-	* Test execution
-	******************************************************************************/
-	virtual void runAll()
-	{
-		std::map<std::string, func>::iterator it;
-		for (it = unitTests().begin(); it != unitTests().end(); it++){
-			it->second(this);
-		}
-	}
-
-	//pattern possiblly includes the wildcard characters  ?  and  *.
-	virtual void runAll(std::string pattern)
-	{
-		std::map<std::string, func>::iterator it;
-		for (it = unitTests().begin(); it != unitTests().end(); it++){
-			if(wcMatch(it->first.c_str(), pattern.c_str())) {
-				it->second(this);
-			}
-		}
-	}
-
-	template <class T> friend class Unit;
-protected:
-	int units;
-	int state;
-	int worst;
-	long elapsed;
-	std::string what;
 
 	typedef void (*func)(UnitTest* _this);
-	static std::map<std::string, func>& unitTests() {
-		static std::map<std::string, func> tests;
-		return tests;
+	static std::map<std::string, func>& runTests() {
+		static std::map<std::string, func> funcs;
+		return funcs;
 	}
 };
 
@@ -241,6 +272,33 @@ public:
 		_t;
 	}
 
+	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
+		//nested type using typename
+		template <typename T, typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+		static T c_arg(const T& value)
+		{
+			//(integral, floating point, boolean, or char
+			return value;
+		}
+		//std::string or const char*
+		static const char* c_arg(const std::string& value)
+		{
+			return value.c_str();
+		}
+
+		template <class ... Arg>
+		static void dprintf(const std::string& format, const Arg& ... arg)
+		{
+			UnitTest::dprintf(c_arg(format), c_arg(arg) ...);
+		}
+
+		template <class A, class ... Arg>
+		static void _assert(const A& expression, const std::string& shouldbe, const Arg&... arg)
+		{
+			UnitTest::_assert(expression, c_arg(shouldbe), c_arg(arg) ...);
+		}
+	#endif
+
 protected:
 	static std::string name()
 	{
@@ -252,68 +310,59 @@ protected:
 
 	static void runTest(UnitTest* _this)
 	{
-		int which=0;
-		std::string what="";
-		long elapsed = _this->usElapse(0);
+		++_this->units;
 
+		UnitTest ut;
+		long elapsed = _this->usElapse(0);
 		try
 		{
-			++_this->units;
-
-			which=UnitTest::BT; what=name()+"()";
+			ut.worst = SETTING;
 			T t;
 
-			which=UnitTest::EX; what="Test()";
+			ut.worst = TESTING;
 			//To access private method Test()
 			Unit<T>* p = &t;
 			p->Test();
 
-			which=UnitTest::ZB; what="~"+name()+"()";
+			ut.worst = TEARING;
 		}
 		catch(UnitTest& e)
 		{
-			if(e.state == UnitTest::OK)
-			{
-				--_this->units;
-				return;
-			}
-
-			elapsed=usElapse(elapsed);
-			_this->elapsed += elapsed;
-			_this->state=e.state;
-			_this->result();
-
-			_this->what = e.what;
-			_this->report(name().c_str());
-			return;
+			ut.elapsed = _this->usElapse(elapsed);
+			ut.worst = e.worst;
+			ut.whats = e.whats;
 		}
 		catch(...)
 		{
-			elapsed=usElapse(elapsed);
-			_this->elapsed += elapsed;
-			_this->state=which;
-			_this->result();
-
-			_this->what="Exception in "+what;
-			_this->report(name().c_str());
-			return;
+			ut.elapsed = _this->usElapse(elapsed);
+			switch (ut.worst) {
+			case SETTING:
+				ut.whats = name() + "()";
+				break;
+			case TESTING:
+				ut.whats = "Test()";
+				break;
+			case TEARING:
+				ut.whats = "~" + name() + "()";
+				break;
+			}
+			ut.worst = UNKNOWN;
 		}
 
-		elapsed=usElapse(elapsed);
-		_this->elapsed += elapsed;
-		_this->state=UnitTest::OK;
-		_this->result();
+		if (ut.worst == TEARING && ut.elapsed == 0) {
+			ut.elapsed = _this->usElapse(elapsed);
+			ut.worst = SUCCESS;
+			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);
+		}
 
-		char desc[1024] = {0};
-		sprintf(desc,"Test OK, time elapsed %ld us", elapsed);
-		_this->what = desc;
-		_this->report(name().c_str());
+		_this->elapsed += ut.elapsed;
+		_this->result(ut.worst);
+		_this->report(name(), ut.worst, ut.whats);
 	}
 
-	/**Record this test */
 	static T* initialize()
 	{
-		unitTests()[name()] = runTest;
+		runTests()[name()] = runTest;
 		return NULL;
 	}
 
@@ -347,7 +396,15 @@ public:
 
 	void Test()
 	{
-		_assert(true, "It is true.");
+		/* throw comment */
+		//throw UnitTest(SUCCESS, "No implementation");
+		//throw UnitTest(COMMENT, "No implementation");
+
+		/* throw unknown exception */
+		//throw this;
+
+		/* Assert : _assert */
+		_assert(true, "It should be true.");
 	}
 
 	~TestOne()
