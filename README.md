@@ -45,8 +45,8 @@ int main(int argc, char* argv[])
 }
 
 /* Display the result of test . */
-	TestMinimal : Success - Test OK, time elapsed 3953976 us
+	Success : TestMinimal - 3.953976s
 	----------------------------------------
-	Executed: 1 unit(s), 3953976 us
+	Executed: 1 unit, 3.953976s
 	Resulted: Success
 ```
