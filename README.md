@@ -35,7 +35,7 @@ struct TestMinimal : public Unit<TestMinimal>
 	}
 };
 
-/* Run a unit test. */
+/* Run the unit test. */
 int main(int argc, char* argv[])
 {
 	/* Run and report your unit test. */
@@ -45,9 +45,8 @@ int main(int argc, char* argv[])
 }
 
 /* Display the result of test . */
-	Success : TestAuto - 0s
 	Success : TestMinimal - 0s
 	----------------------------------------
-	Executed: 2 units, 0s at 2025-01-12 20:30:47
+	Executed: 1 unit, 0s at 2025-01-12 20:30:47
 	Resulted: Success
 ```
