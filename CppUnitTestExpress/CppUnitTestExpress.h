@@ -10,7 +10,7 @@
 	* No config, no test macro, no graphic interface, no extrernal library
 	* Auto record, grouping by keyword, extended easily
 * How to do:
-	Please see an example in the end of this page.
+	Please see an example in the end of this file.
 * Created: 30/05/2008 03:00 AM
 * Author: XCZ
 * Email: xczhong@free.fr
@@ -27,6 +27,7 @@
 #include <map>
 #include <string>
 #include <typeinfo>
+#include <stdlib.h>
 #ifdef _WIN32 //VC++ 7.0
 #include <windows.h>
 #pragma warning (disable:4996)
@@ -48,6 +49,7 @@ public:
 		#define X(e, s) e,
 			UNIT_TEST_STATES
 		#undef X
+			LASTONE
 	};
 
 	static const char* stateText(STATE state) {
@@ -62,14 +64,25 @@ public:
 	******************************************************************************/
 	UnitTest()
 	{
-		initialize();
+		units = 0;
+		elapsed = 0;
+		whats = "";
+		worse = SUCCESS;
 	}
 
-	UnitTest(STATE state, std::string what)
+	UnitTest(STATE state, std::string what) : UnitTest()
 	{
-		initialize(state, what);
+		whats = what;
+		worse = state;
 	}
 
+	~UnitTest() {
+		//Last declared and first destroyed
+		if (worse == LASTONE) {
+			worse = SUCCESS;
+			runAll();
+		}
+	}
 	/*****************************************************************************
 	* Utilities
 	******************************************************************************/
@@ -159,51 +172,42 @@ public:
 				units > 1 ? "units":"unit",
 				elapsed / 1e6,
 				sDateISO,
-				stateText(worst));
-		return worst;
+				stateText(worse));
+		return worse;
 	}
 
 	/*****************************************************************************
 	* Test execution
 	******************************************************************************/
-	virtual void runAll()
-	{
-		std::map<std::string, func>::iterator it;
-		for (it = runTests().begin(); it != runTests().end(); it++){
-			it->second(this);
-		}
-	}
-
 	//pattern possiblly includes the wildcard characters  ?  and  *.
-	virtual void runAll(std::string pattern)
+	virtual int runAll(std::string pattern = "")
 	{
-		std::map<std::string, func>::iterator it;
+		std::map<std::string, test_func>::iterator it;
 		for (it = runTests().begin(); it != runTests().end(); it++){
-			if(wcMatch(it->first.c_str(), pattern.c_str())) {
+			if(pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
 				it->second(this);
 			}
 		}
+
+		return this->resume();
 	}
 
 	template <class T> friend class Unit;
 protected:
 	int units;
 	long elapsed;
-	STATE worst;
 	std::string whats;
+	STATE worse;
 
-	void initialize(STATE state = SUCCESS, std::string what = "")
-	{
-		units = 0;
-		elapsed = 0;
-		worst = state;
-		whats = what;
+	static  UnitTest*& lastOne() {
+		static UnitTest* _lastOne = NULL;
+		return _lastOne;
 	}
 
 	int result(STATE state)
 	{
-		if (state > worst) worst = state;
-		return worst;
+		if (state > worse) worse = state;
+		return worse;
 	}
 
 	static std::string vssprintf(const char* format, va_list args)
@@ -254,9 +258,10 @@ protected:
 		return false;
 	}
 
-	typedef void (*func)(UnitTest* _this);
-	static std::map<std::string, func>& runTests() {
-		static std::map<std::string, func> funcs;
+	typedef void (*test_func)(UnitTest* _this);
+	static std::map<std::string, test_func>& runTests()
+	{
+		static std::map<std::string, test_func> funcs;
 		return funcs;
 	}
 };
@@ -310,32 +315,34 @@ protected:
 
 	static void runTest(UnitTest* _this)
 	{
-		++_this->units;
+		//Disable last one
+		if(lastOne() != _this) lastOne()->worse = SUCCESS;
 
+		++_this->units;
 		UnitTest ut;
 		long elapsed = _this->usElapse(0);
 		try
 		{
-			ut.worst = SETTING;
+			ut.worse = SETTING;
 			T t;
 
-			ut.worst = TESTING;
+			ut.worse = TESTING;
 			//To access private method Test()
 			Unit<T>* p = &t;
 			p->Test();
 
-			ut.worst = TEARING;
+			ut.worse = TEARING;
 		}
 		catch(UnitTest& e)
 		{
 			ut.elapsed = _this->usElapse(elapsed);
-			ut.worst = e.worst;
+			ut.worse = e.worse;
 			ut.whats = e.whats;
 		}
 		catch(...)
 		{
 			ut.elapsed = _this->usElapse(elapsed);
-			switch (ut.worst) {
+			switch (ut.worse) {
 			case SETTING:
 				ut.whats = name() + "()";
 				break;
@@ -346,23 +353,33 @@ protected:
 				ut.whats = "~" + name() + "()";
 				break;
 			}
-			ut.worst = UNKNOWN;
+			ut.worse = UNKNOWN;
 		}
 
-		if (ut.worst == TEARING && ut.elapsed == 0) {
+		if (ut.worse == TEARING && ut.elapsed == 0) {
 			ut.elapsed = _this->usElapse(elapsed);
-			ut.worst = SUCCESS;
+			ut.worse = SUCCESS;
 			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);
 		}
 
 		_this->elapsed += ut.elapsed;
-		_this->result(ut.worst);
-		_this->report(name(), ut.worst, ut.whats);
+		_this->result(ut.worse);
+		_this->report(name(), ut.worse, ut.whats);
+	}
+
+	//Save last declared
+	static void setLastOne()
+	{
+		static UnitTest ut(LASTONE, "");
+		//Disable previous
+		if (lastOne()) lastOne()->worse = SUCCESS;
+		lastOne() = &ut;
 	}
 
 	static T* initialize()
 	{
 		runTests()[name()] = runTest;
+		setLastOne();
 		return NULL;
 	}
 
@@ -397,11 +414,11 @@ public:
 	void Test()
 	{
 		/* throw comment */
-		//throw UnitTest(SUCCESS, "No implementation");
-		//throw UnitTest(COMMENT, "No implementation");
+		throw UnitTest(SUCCESS, "No implementation");
+		throw UnitTest(COMMENT, "No implementation");
 
 		/* throw unknown exception */
-		//throw this;
+		throw this;
 
 		/* Assert : _assert */
 		_assert(true, "It should be true.");
@@ -415,10 +432,10 @@ public:
 
 int main(int argc, char* argv[])
 {
-	/* Run and report your unit test. */
 	UnitTest ut;
-	ut.runAll();
-	return ut.resume();
+	ut.runAll("TestOne"); //Run and report your unit test. 
+	ut.runAll("Test*");  //Run and report all unit tests whose names begin with Test.
+	return ut.runAll(); //Run and report all unit tests.
 }
 #endif
 #endif //_CPP_UNIT_TEST_EXPRESS_H_

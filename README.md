@@ -38,10 +38,7 @@ struct TestMinimal : public Unit<TestMinimal>
 /* Run the unit test. */
 int main(int argc, char* argv[])
 {
-	/* Run and report your unit test. */
-	UnitTest ut;
-	ut.runAll();
-	return ut.resume();
+	return 0;
 }
 
 /* Display the result of test . */
