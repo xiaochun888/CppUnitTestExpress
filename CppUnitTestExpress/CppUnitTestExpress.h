@@ -27,7 +27,6 @@
 #include <map>
 #include <string>
 #include <typeinfo>
-#include <stdlib.h>
 #ifdef _WIN32 //VC++ 7.0
 #include <windows.h>
 #pragma warning (disable:4996)
@@ -35,7 +34,6 @@
 
 #define UNIT_TEST_STATES \
 X(SUCCESS, "Success") \
-X(COMMENT, "Comment") \
 X(SETTING, "Setting") \
 X(TESTING, "Testing") \
 X(TEARING, "Tearing") \
@@ -316,7 +314,7 @@ protected:
 	static void runTest(UnitTest* _this)
 	{
 		//Disable last one
-		if(lastOne() != _this) lastOne()->worse = SUCCESS;
+		if(lastOne()->worse == LASTONE) lastOne()->worse = SUCCESS;
 
 		++_this->units;
 		UnitTest ut;
@@ -415,7 +413,6 @@ public:
 	{
 		/* throw comment */
 		throw UnitTest(SUCCESS, "No implementation");
-		throw UnitTest(COMMENT, "No implementation");
 
 		/* throw unknown exception */
 		throw this;
