@@ -47,7 +47,6 @@ public:
 		#define X(e, s) e,
 			UNIT_TEST_STATES
 		#undef X
-			LASTONE
 	};
 
 	static const char* stateText(STATE state) {
@@ -64,6 +63,7 @@ public:
 	{
 		units = 0;
 		elapsed = 0;
+		isLast = false;
 		whats = "";
 		worse = SUCCESS;
 	}
@@ -76,8 +76,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (worse == LASTONE) {
-			worse = SUCCESS;
+		if (isLast) {
 			runAll();
 		}
 	}
@@ -194,6 +193,7 @@ public:
 protected:
 	int units;
 	long elapsed;
+	bool isLast;
 	std::string whats;
 	STATE worse;
 
@@ -314,7 +314,7 @@ protected:
 	static void runTest(UnitTest* _this)
 	{
 		//Disable last one
-		if(lastOne()->worse == LASTONE) lastOne()->worse = SUCCESS;
+		lastOne()->isLast = false;
 
 		++_this->units;
 		UnitTest ut;
@@ -368,9 +368,10 @@ protected:
 	//Save last declared
 	static void setLastOne()
 	{
-		static UnitTest ut(LASTONE, "");
+		static UnitTest ut;
+		ut.isLast = true;
 		//Disable previous
-		if (lastOne()) lastOne()->worse = SUCCESS;
+		if (lastOne()) lastOne()->isLast = false;
 		lastOne() = &ut;
 	}
 
