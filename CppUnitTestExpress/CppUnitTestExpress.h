@@ -63,7 +63,7 @@ public:
 	{
 		units = 0;
 		elapsed = 0;
-		isLast = false;
+		isLatest = false;
 		whats = "";
 		worse = SUCCESS;
 	}
@@ -76,7 +76,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (isLast) {
+		if (isLatest) {
 			runAll();
 		}
 	}
@@ -193,13 +193,15 @@ public:
 protected:
 	int units;
 	long elapsed;
-	bool isLast;
+	bool isLatest;
 	std::string whats;
 	STATE worse;
 
-	static  UnitTest*& lastOne() {
-		static UnitTest* _lastOne = NULL;
-		return _lastOne;
+	static void setLatest(UnitTest* ut) {
+		static UnitTest* _latest = NULL;
+		if (_latest) _latest->isLatest = false;
+		if(ut) ut->isLatest = true;
+		_latest = ut;
 	}
 
 	int result(STATE state)
@@ -313,8 +315,7 @@ protected:
 
 	static void runTest(UnitTest* _this)
 	{
-		//Disable last one
-		lastOne()->isLast = false;
+		UnitTest::setLatest(NULL);
 
 		++_this->units;
 		UnitTest ut;
@@ -365,20 +366,16 @@ protected:
 		_this->report(name(), ut.worse, ut.whats);
 	}
 
-	//Save last declared
-	static void setLastOne()
+	static void setLatest()
 	{
 		static UnitTest ut;
-		ut.isLast = true;
-		//Disable previous
-		if (lastOne()) lastOne()->isLast = false;
-		lastOne() = &ut;
+		UnitTest::setLatest(&ut);
 	}
 
 	static T* initialize()
 	{
 		runTests()[name()] = runTest;
-		setLastOne();
+		setLatest();
 		return NULL;
 	}
 
