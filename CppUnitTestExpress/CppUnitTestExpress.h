@@ -37,6 +37,7 @@ X(SUCCESS, "Success") \
 X(SETTING, "Setting") \
 X(TESTING, "Testing") \
 X(TEARING, "Tearing") \
+X(ANOMALY, "Anomaly") \
 X(UNKNOWN, "Unknown") \
 X(FAILURE, "Failure")
 
@@ -47,13 +48,14 @@ public:
 		#define X(e, s) e,
 			UNIT_TEST_STATES
 		#undef X
+		IGNORED = -1
 	};
 
 	static const char* stateText(STATE state) {
 		#define X(e, s) if(e==state) return(const char*)s;
 			UNIT_TEST_STATES
 		#undef X
-		return "";
+		return "Ignored";
 	};
 
 	/*****************************************************************************
@@ -173,6 +175,11 @@ public:
 		return worse;
 	}
 
+	virtual int result()
+	{
+		return worse;
+	}
+
 	/*****************************************************************************
 	* Test execution
 	******************************************************************************/
@@ -180,7 +187,7 @@ public:
 	virtual int runAll(std::string pattern = "")
 	{
 		std::map<std::string, test_func>::iterator it;
-		for (it = runTests().begin(); it != runTests().end(); it++){
+		for (it = funcs().begin(); it != funcs().end(); it++){
 			if(pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
 				it->second(this);
 			}
@@ -196,13 +203,6 @@ protected:
 	bool isLatest;
 	std::string whats;
 	STATE worse;
-
-	static void setLatest(UnitTest* ut) {
-		static UnitTest* _latest = NULL;
-		if (_latest) _latest->isLatest = false;
-		if(ut) ut->isLatest = true;
-		_latest = ut;
-	}
 
 	int result(STATE state)
 	{
@@ -258,11 +258,18 @@ protected:
 		return false;
 	}
 
+	static void setLatest(UnitTest* ut) {
+		static UnitTest* _latest = NULL;
+		if (_latest) _latest->isLatest = false;
+		if (ut) ut->isLatest = true;
+		_latest = ut;
+	}
+
 	typedef void (*test_func)(UnitTest* _this);
-	static std::map<std::string, test_func>& runTests()
+	static std::map<std::string, test_func>& funcs()
 	{
-		static std::map<std::string, test_func> funcs;
-		return funcs;
+		static std::map<std::string, test_func> _funcs;
+		return _funcs;
 	}
 };
 
@@ -313,6 +320,23 @@ protected:
 		return className.substr(6); //remove "class "
 	}
 
+	static void tryThrow(UnitTest& ut) try {
+		throw;
+	}
+	catch (const UnitTest& e)
+	{
+		ut.worse = e.worse;
+		ut.whats += ", ";
+		ut.whats += e.whats;
+	}
+	catch (const std::exception& e)
+	{
+		ut.worse = ANOMALY;
+		ut.whats += ", ";
+		ut.whats += e.what();
+	}
+	catch (...) {}
+
 	static void runTest(UnitTest* _this)
 	{
 		UnitTest::setLatest(NULL);
@@ -332,27 +356,29 @@ protected:
 
 			ut.worse = TEARING;
 		}
-		catch(UnitTest& e)
+		catch (const Unit<T>*& t)
 		{
-			ut.elapsed = _this->usElapse(elapsed);
-			ut.worse = e.worse;
-			ut.whats = e.whats;
+			--_this->units;
+			ut.worse = IGNORED;
+			ut.whats = t->whats;
 		}
 		catch(...)
 		{
 			ut.elapsed = _this->usElapse(elapsed);
 			switch (ut.worse) {
 			case SETTING:
-				ut.whats = name() + "()";
+				ut.whats = "ctor()";
 				break;
 			case TESTING:
 				ut.whats = "Test()";
 				break;
 			case TEARING:
-				ut.whats = "~" + name() + "()";
+				ut.whats = "dtor()";
 				break;
 			}
 			ut.worse = UNKNOWN;
+
+			tryThrow(ut);
 		}
 
 		if (ut.worse == TEARING && ut.elapsed == 0) {
@@ -374,7 +400,7 @@ protected:
 
 	static T* initialize()
 	{
-		runTests()[name()] = runTest;
+		funcs()[name()] = runTest;
 		setLatest();
 		return NULL;
 	}
@@ -409,13 +435,10 @@ public:
 
 	void Test()
 	{
-		/* throw comment */
-		throw UnitTest(SUCCESS, "No implementation");
-
-		/* throw unknown exception */
+		/* ignore this test */
 		throw this;
 
-		/* Assert : _assert */
+		/* throw failure */
 		_assert(true, "It should be true.");
 	}
 
@@ -425,12 +448,19 @@ public:
 	}
 };
 
+/* Run and report your unit test. */
 int main(int argc, char* argv[])
 {
 	UnitTest ut;
 	ut.runAll("TestOne"); //Run and report your unit test. 
 	ut.runAll("Test*");  //Run and report all unit tests whose names begin with Test.
-	return ut.runAll(); //Run and report all unit tests.
+	ut.runAll(); //Run and report all unit tests.
+	return ut.result();
+}
+
+/* Run and report all unit tests by default. */
+int main(int argc, char* argv[])
+{
 }
 #endif
 #endif //_CPP_UNIT_TEST_EXPRESS_H_
