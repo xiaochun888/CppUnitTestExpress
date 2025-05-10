@@ -33,29 +33,29 @@
 #endif
 
 #define UNIT_TEST_STATES \
-X(SUCCESS, "Success") \
-X(SETTING, "Setting") \
-X(TESTING, "Testing") \
-X(TEARING, "Tearing") \
-X(ANOMALY, "Anomaly") \
-X(UNKNOWN, "Unknown") \
-X(FAILURE, "Failure")
+X(SUCCESS, "") \
+X(SETTING, "ctor()") \
+X(TESTING, "Test()") \
+X(TEARING, "dtor()") \
+X(ANOMALY, "") \
+X(UNKNOWN, "") \
+X(FAILURE, "")
 
 class UnitTest
 {
 public:
 	enum STATE {
-		#define X(e, s) e,
+		#define X(e, w) e,
 			UNIT_TEST_STATES
 		#undef X
 		IGNORED = -1
 	};
 
 	static const char* stateText(STATE state) {
-		#define X(e, s) if(e==state) return(const char*)s;
+		#define X(e, w) if(e == state) return #e;
 			UNIT_TEST_STATES
 		#undef X
-		return "Ignored";
+		return "IGNORED";
 	};
 
 	/*****************************************************************************
@@ -286,13 +286,13 @@ public:
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
 		//nested type using typename
-		template <typename T, typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+		template <typename T, typename std::enable_if<!std::is_same<T, std::string>::value>::type* = nullptr>
 		static T c_arg(const T& value)
 		{
-			//(integral, floating point, boolean, or char
+			//integral, floating point, boolean, char or enum
 			return value;
 		}
-		//std::string or const char*
+		//std::string, const char* et char[]
 		static const char* c_arg(const std::string& value)
 		{
 			return value.c_str();
@@ -365,23 +365,16 @@ protected:
 		catch(...)
 		{
 			ut.elapsed = _this->usElapse(elapsed);
-			switch (ut.worse) {
-			case SETTING:
-				ut.whats = "ctor()";
-				break;
-			case TESTING:
-				ut.whats = "Test()";
-				break;
-			case TEARING:
-				ut.whats = "dtor()";
-				break;
-			}
-			ut.worse = UNKNOWN;
 
+			#define X(e, w) if(e == ut.worse) ut.whats = w;
+				UNIT_TEST_STATES
+			#undef X
+
+			ut.worse = UNKNOWN;
 			tryThrow(ut);
 		}
 
-		if (ut.worse == TEARING && ut.elapsed == 0) {
+		if (ut.worse == TEARING) {
 			ut.elapsed = _this->usElapse(elapsed);
 			ut.worse = SUCCESS;
 			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);

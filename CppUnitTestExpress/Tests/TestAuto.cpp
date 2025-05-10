@@ -1,6 +1,6 @@
 #include "../CppUnitTestExpress.h"
 
-class TestAuto : public Unit<TestAuto> {
+class TestStringComparaison : public Unit<TestStringComparaison> {
 public:
 	virtual void Test() {
 		const char* const_chars = "";
@@ -47,21 +47,27 @@ public:
 		UnitTest::_assert("11:20" < "11:21", "11:20 < 11:21");
 		UnitTest::_assert("11:21" <= "11:21", "11:21 <= 11:21");
 		UnitTest::_assert("11:21" == "11:21", "11:21 >= 11:21");
+	}
+};
 
+class TestAssertExpression : public Unit<TestAssertExpression> {
+	void Test() {
 		float ft = 1.0;
 		int it = 1;
 		unsigned ut = 1;
+		char char_arr[10] = { "11:20" };
+		char char_arr2[20] = { "11:20" };
+
 		UnitTest::_assert(ft == it, "ft is equal to it");
 
-		//Expression Comparaison
 		UnitTest::_assert(ft == it, "ft == it");
 		UnitTest::_assert(ft == ut, "ft == ut");
 
-		wcs_str_const = L"test";
+		wchar_t const* wcs_str_const = L"test";
 		UnitTest::_assert(wcs_str_const == L"test", "wchar_t const *");
 		UnitTest::_assert(wcs_str_const == L"test", "wchar_t const *");
 
-		const_chars = "test";
+		const char* const_chars = "test";
 		UnitTest::_assert(const_chars == "test", "const_chars == test");
 
 		UnitTest::_assert(char_arr != "11:20", "char [] != char *");
@@ -72,8 +78,29 @@ public:
 		UnitTest::_assert("11:35" < "12:00", "11:35 < 12:00");
 
 		std::string str = "11:35";
-		UnitTest::_assert(str < "12:00", "11:35 < 12:00");
+		_assert(str < "12:00", "11:35 < 12:00");
 		_assert(str > "11:00", "11:35 > 11:00");
 	}
 };
 
+class TestVariadicArgument : public Unit<TestVariadicArgument> {
+	void Test() {
+		char char_arrary[20] = { "test" };
+		std::string std_string = char_arrary;
+		const char* const_chars = std_string.c_str();
+
+		dprintf("SUCCESS:%d, %s, %s, %s\n", SUCCESS, const_chars, char_arrary, std_string);
+
+		_assert(0 == strcmp(c_arg(std_string), std_string.c_str()), "Should be same: %s == %s", std_string, std_string.c_str());
+		_assert(0 == strcmp(c_arg(const_chars), char_arrary), "Should be same");
+		_assert(c_arg(1) == 1, "Should be equal");
+		_assert(c_arg(1.1) == 1.1, "Should be equal");
+		_assert(c_arg(SUCCESS) == SUCCESS, "Should be equal");
+	}
+};
+
+class TestIgnoreTest : public Unit<TestIgnoreTest> {
+	void Test() {
+		throw this;
+	}
+};

@@ -42,8 +42,8 @@ int main(int argc, char* argv[])
 }
 
 /* Display the result of test . */
-	Success : TestMinimal - 0s
+	SUCCESS : TestMinimal - 0s
 	----------------------------------------
 	Executed: 1 unit, 0s at 2025-01-12 20:30:47
-	Resulted: Success
+	Resulted: SUCCESS
 ```
