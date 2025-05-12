@@ -1,11 +1,12 @@
 # CppUnitTestExpress
  A enough simple and cross-platform unit test framework for C++, CuteX for short.
- It is just a very small header file that uses the C/C++ peculiar features (X marco, template specialization, recursive and variadic, ...) to simplify test work, and there is only one assert tool to do all test cases without learning time.
- You just write a test case, compiler do the rest for you.
+ It is just a very small header file that uses the C/C++ peculiar features (X marco, template specialization, recursive and variadic, ...) to simplify test work.
+ **There is only one assertion tool to complete all test cases, with no learning time.**
+ **You just write a unit test no matter where, and the compiler does the rest for you.**
  
 ## Main features:
 
-It is designed for user to concentrate on writing a test scenario, and tests organization is automatically completed by compiler. Each test unit is a natural structure or class, so no “strange” test fixture.
+It is designed to let users focus on writing test scenarios. Each test unit is a native struct or class, so there are no "weird" test fixtures. The only assertion tool is normal method or function, so avoids using macros in a test unit.
 
 1. Only a header file, only use C++ compiler.
 2. Any member method or function can be tested.
@@ -31,7 +32,7 @@ struct TestMinimal : public Unit<TestMinimal>
 {
 	void Test()
 	{
-		_assert(true,"It is true.");
+		_assert(true,"Should be true.");
 	}
 };
 
