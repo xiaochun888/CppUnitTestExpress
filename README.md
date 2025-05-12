@@ -6,7 +6,7 @@
  
 ## Main features:
 
-It is designed to let users focus on writing test scenarios. Each test unit is a native struct or class, so there are no "weird" test fixtures. The only assertion tool is normal method or function, so avoids using macros in a test unit.
+It is designed to let users focus on writing test scenarios. Each test unit is a native struct or class, so there are no "weird" test fixtures. The only assertion tool is normal method or function, so avoids using macros in a unit test.
 
 1. Only a header file, only use C++ compiler.
 2. Any member method or function can be tested.
