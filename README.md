@@ -4,7 +4,7 @@
  
  **There is only one assertion tool to complete all test cases, with no learning time.**
  
- **You just write a unit test no matter where, and the compiler does the rest for you.**
+ **You just write a unit test, no matter where, and the compiler does the rest for you.**
  
 ## Main features:
 
