@@ -1,6 +1,6 @@
 # CppUnitTestExpress
  A enough simple and cross-platform unit test framework for C++, CuteX for short.
- It is just a very small header file that uses the C/C++ peculiar features (X marco, template specialization, recursive and variadic, ...) to simplify test work.
+ It is just a very small header file that uses the C/C++ peculiar features (X marco, template specialization, recursive and variadic, ...) to simplify testing work.
  **There is only one assertion tool to complete all test cases, with no learning time.**
  **You just write a unit test no matter where, and the compiler does the rest for you.**
  
