@@ -30,7 +30,7 @@ The below code snippet demonstrates the least amount of code required to write a
 #include "CppUnitTestExpress.h"
 
 /* Write a unit test given a name. */
-struct TestMinimal : public Unit<TestMinimal>
+class TestMinimal : public Unit<TestMinimal>
 {
 	void Test()
 	{
