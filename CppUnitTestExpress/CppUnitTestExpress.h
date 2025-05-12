@@ -58,6 +58,13 @@ public:
 		return "IGNORED";
 	};
 
+	static const char* stateWhen(STATE state) {
+		#define X(e, w) if(e == state) return w;
+			UNIT_TEST_STATES
+		#undef X
+			return "";
+	};
+
 	/*****************************************************************************
 	* Initialization
 	******************************************************************************/
@@ -163,6 +170,7 @@ public:
 		char sDateISO[sizeof "2022-08-23T10:40:20Z"];
 		strftime(sDateISO, sizeof sDateISO, "%Y-%m-%d %H:%M:%S", &tmLocal);
 
+		dprintf("\n");
 		dprintf(whats.c_str());
 		dprintf("\t----------------------------------------\n"
 				"\tExecuted: %d %s, %lgs at %s\n"
@@ -320,23 +328,6 @@ protected:
 		return className.substr(6); //remove "class "
 	}
 
-	static void tryThrow(UnitTest& ut) try {
-		throw;
-	}
-	catch (const UnitTest& e)
-	{
-		ut.worse = e.worse;
-		ut.whats += ", ";
-		ut.whats += e.whats;
-	}
-	catch (const std::exception& e)
-	{
-		ut.worse = ANOMALY;
-		ut.whats += ", ";
-		ut.whats += e.what();
-	}
-	catch (...) {}
-
 	static void runTest(UnitTest* _this)
 	{
 		UnitTest::setLatest(NULL);
@@ -359,27 +350,34 @@ protected:
 		catch (const Unit<T>*& t)
 		{
 			--_this->units;
-			ut.worse = IGNORED;
 			ut.whats = t->whats;
+			ut.worse = IGNORED;
+		}
+		catch (const UnitTest& e)
+		{
+			ut.whats = stateWhen(ut.worse);
+			ut.whats += ", ";
+			ut.whats += e.whats;
+			ut.worse = e.worse;
+		}
+		catch (const std::exception& e)
+		{
+			ut.whats = stateWhen(ut.worse);
+			ut.whats += ", ";
+			ut.whats += e.what();
+			ut.worse = ANOMALY;
 		}
 		catch(...)
 		{
-			ut.elapsed = _this->usElapse(elapsed);
-
-			#define X(e, w) if(e == ut.worse) ut.whats = w;
-				UNIT_TEST_STATES
-			#undef X
-
+			ut.whats = stateWhen(ut.worse);
 			ut.worse = UNKNOWN;
-			tryThrow(ut);
 		}
 
+		ut.elapsed = _this->usElapse(elapsed);
 		if (ut.worse == TEARING) {
-			ut.elapsed = _this->usElapse(elapsed);
-			ut.worse = SUCCESS;
 			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);
+			ut.worse = SUCCESS;
 		}
-
 		_this->elapsed += ut.elapsed;
 		_this->result(ut.worse);
 		_this->report(name(), ut.worse, ut.whats);
