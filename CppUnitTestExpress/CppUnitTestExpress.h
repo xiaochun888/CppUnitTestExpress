@@ -34,9 +34,9 @@
 
 #define UNIT_TEST_STATES \
 X(SUCCESS, "") \
-X(SETTING, "ctor()") \
+X(SETTING, "Ctor()") \
 X(TESTING, "Test()") \
-X(TEARING, "dtor()") \
+X(TEARING, "Dtor()") \
 X(ANOMALY, "") \
 X(UNKNOWN, "") \
 X(FAILURE, "")
