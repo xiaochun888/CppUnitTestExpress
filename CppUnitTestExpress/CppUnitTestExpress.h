@@ -6,8 +6,9 @@
 *		
 * Designed:
 	* Only a header file, only use C++ compiler
-	* Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
+	* Any C++ platform and down-level C++ compilers (e.g. VC6.0)
 	* No config, no test macro, no graphic interface, no extrernal library
+ 	* Can test any member method or function and extend any class or struct
 	* Can execute a test unit or a group by name in wild card
 * How to do:
 	Please see an example in the end of this file.
