@@ -8,7 +8,7 @@
 	* Only a header file, only use C++ compiler
 	* Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
 	* No config, no test macro, no graphic interface, no extrernal library
-	* Auto record, grouping by keyword, extended easily
+	* Can execute a test unit or a group by name in wild card
 * How to do:
 	Please see an example in the end of this file.
 * Created: 30/05/2008 03:00 AM
@@ -27,7 +27,7 @@
 #include <map>
 #include <string>
 #include <typeinfo>
-#ifdef _WIN32 //VC++ 7.0
+#ifdef _WIN32
 #include <windows.h>
 #pragma warning (disable:4996)
 #endif
@@ -402,20 +402,18 @@ protected:
 template<class T>
 T* Unit<T>::_t = Unit<T>::initialize();
 
-/// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
+/// To test private methods,  use public abstract interface or friend.
+/// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total.
 /// use /Zm to specify a higher limit
 /// 
-/// For VC++ 7.0 and later, add "template<>" before every unit test structure
 /// Tested on SunOS 5.5.1
-///
-/// To access private methods via public abstract interface or using friend
 ///
 /// Example:
 #if 0
 /* Add this header file into your project */
 #include "CppUnitTestExpress.h"
 
-/* Write a unit test given a name. */
+/* Write a test unit given a name. */
 class TestOne : public Unit<TestOne>
 {
 public:
