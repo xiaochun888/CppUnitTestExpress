@@ -73,7 +73,7 @@ public:
 	{
 		units = 0;
 		elapsed = 0;
-		isLatest = false;
+		latest = false;
 		whats = "";
 		worse = SUCCESS;
 	}
@@ -86,7 +86,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (isLatest) {
+		if (latest) {
 			runAll();
 		}
 	}
@@ -209,7 +209,7 @@ public:
 protected:
 	int units;
 	long elapsed;
-	bool isLatest;
+	bool latest;
 	std::string whats;
 	STATE worse;
 
@@ -269,8 +269,8 @@ protected:
 
 	static void setLatest(UnitTest* ut) {
 		static UnitTest* _latest = NULL;
-		if (_latest) _latest->isLatest = false;
-		if (ut) ut->isLatest = true;
+		if (_latest) _latest->latest = false;
+		if (ut) ut->latest = true;
 		_latest = ut;
 	}
 
@@ -334,8 +334,9 @@ protected:
 		UnitTest::setLatest(NULL);
 
 		++_this->units;
+		//Initilization
 		UnitTest ut;
-		long elapsed = _this->usElapse(0);
+		ut.elapsed = _this->usElapse(0);
 		try
 		{
 			ut.worse = SETTING;
@@ -374,7 +375,7 @@ protected:
 			ut.worse = UNKNOWN;
 		}
 
-		ut.elapsed = _this->usElapse(elapsed);
+		ut.elapsed = _this->usElapse(ut.elapsed);
 		if (ut.worse == TEARING) {
 			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);
 			ut.worse = SUCCESS;
