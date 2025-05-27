@@ -71,7 +71,7 @@ public:
 	{
 		units = 0;
 		elapsed = 0;
-		latest = false;
+		isLatest = false;
 		whats = "";
 		stage = "";
 		worse = SUCCESS;
@@ -85,7 +85,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (latest) {
+		if (isLatest) {
 			runAll();
 		}
 	}
@@ -204,7 +204,7 @@ public:
 protected:
 	int units;
 	long elapsed;
-	bool latest;
+	bool isLatest;
 	std::string whats;
 	std::string stage;
 	STATE worse;
@@ -265,8 +265,8 @@ protected:
 
 	static void setLatest(UnitTest* ut) {
 		static UnitTest* _latest = NULL;
-		if (_latest) _latest->latest = false;
-		if (ut) ut->latest = true;
+		if (_latest) _latest->isLatest = false;
+		if (ut) ut->isLatest = true;
 		_latest = ut;
 	}
 
