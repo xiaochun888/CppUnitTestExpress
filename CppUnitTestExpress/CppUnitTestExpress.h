@@ -6,10 +6,9 @@
 *		
 * Designed:
 	* Only a header file, only use C++ compiler
-	* Any C++ platform and down-level C++ compilers (e.g. VC6.0)
+	* Any member method or function, any C++ platform and down-level C++ compilers (e.g. VC6.0)
 	* No config, no test macro, no graphic interface, no extrernal library
- 	* Can test any member method or function and extend any class or struct
-	* Can execute a test unit or a group by name in wild card
+	* Auto record, grouping by keyword, extended easily
 * How to do:
 	Please see an example in the end of this file.
 * Created: 30/05/2008 03:00 AM
@@ -34,10 +33,10 @@
 #endif
 
 #define UNIT_TEST_STATES \
+X(SETTING, "::ctor()") \
+X(TESTING, "::Test()") \
+X(TEARING, "::dtor()") \
 X(SUCCESS, "") \
-X(SETTING, "Ctor()") \
-X(TESTING, "Test()") \
-X(TEARING, "Dtor()") \
 X(ANOMALY, "") \
 X(UNKNOWN, "") \
 X(FAILURE, "")
@@ -46,35 +45,35 @@ class UnitTest
 {
 public:
 	enum STATE {
-		#define X(e, w) e,
+		SETTING = -3
+		#define X(e, s) e,
+		#define SETTING
 			UNIT_TEST_STATES
 		#undef X
-		IGNORED = -1
+		#undef SETTING
 	};
 
-	static const char* stateText(STATE state) {
-		#define X(e, w) if(e == state) return #e;
+	static const char* stateName(STATE state) {
+		#define X(e, s) if(e == state) return #e;
 			UNIT_TEST_STATES
 		#undef X
-		return "IGNORED";
+		return "";
 	};
 
-	static const char* stateWhen(STATE state) {
-		#define X(e, w) if(e == state) return w;
+	static const char* stageName(STATE state) {
+		#define X(e, s) if(e == state) return s;
 			UNIT_TEST_STATES
 		#undef X
-			return "";
+		return "";
 	};
 
-	/*****************************************************************************
-	* Initialization
-	******************************************************************************/
 	UnitTest()
 	{
 		units = 0;
 		elapsed = 0;
 		isLatest = false;
 		whats = "";
+		stage = "";
 		worse = SUCCESS;
 	}
 
@@ -90,6 +89,7 @@ public:
 			runAll();
 		}
 	}
+
 	/*****************************************************************************
 	* Utilities
 	******************************************************************************/
@@ -159,9 +159,9 @@ public:
 	/*****************************************************************************
 	* Test report
 	******************************************************************************/
-	virtual void report(std::string name, STATE state, std::string what)
+	virtual void report(std::string stage, STATE state, std::string what)
 	{
-		whats += ssprintf("\t%s : %s - %s\n", stateText(state), name.c_str(), what.c_str());
+		whats += ssprintf("\t%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
 	}
 
 	virtual int resume()
@@ -180,12 +180,7 @@ public:
 				units > 1 ? "units":"unit",
 				elapsed / 1e6,
 				sDateISO,
-				stateText(worse));
-		return worse;
-	}
-
-	virtual int result()
-	{
+				stateName(worse));
 		return worse;
 	}
 
@@ -211,9 +206,10 @@ protected:
 	long elapsed;
 	bool isLatest;
 	std::string whats;
+	std::string stage;
 	STATE worse;
 
-	int result(STATE state)
+	STATE evolve(STATE state)
 	{
 		if (state > worse) worse = state;
 		return worse;
@@ -287,22 +283,36 @@ class Unit : public UnitTest {
 public:
 	virtual void Test() = 0;
 
+	Unit() {
+		stage = name();
+		worse = SETTING;
+		elapsed = usElapse(0);
+	}
+
 	virtual ~Unit()
 	{
+		elapsed = usElapse(elapsed);
+		if(!std::uncaught_exception()) worse = SUCCESS;
+		stage += stageName(worse);
+
 		/* force specialization */
-		_t;
+		if (_ut) {
+			_ut->stage = stage;
+			_ut->worse = worse;
+			_ut->whats = ssprintf("%lgs", _ut->elapsed / 1e6);
+		}
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
 		//nested type using typename
-		template <typename T, typename std::enable_if<!std::is_same<T, std::string>::value>::type* = nullptr>
-		static T c_arg(const T& value)
+		template <typename T, typename std::enable_if<!std::is_base_of<std::string, T>::value>::type* = nullptr>
+		static T c_val(const T& value)
 		{
 			//integral, floating point, boolean, char or enum
 			return value;
 		}
 		//std::string, const char* et char[]
-		static const char* c_arg(const std::string& value)
+		static const char* c_val(const std::string& value)
 		{
 			return value.c_str();
 		}
@@ -310,13 +320,13 @@ public:
 		template <class ... Arg>
 		static void dprintf(const std::string& format, const Arg& ... arg)
 		{
-			UnitTest::dprintf(c_arg(format), c_arg(arg) ...);
+			UnitTest::dprintf(c_val(format), c_val(arg) ...);
 		}
 
 		template <class A, class ... Arg>
 		static void _assert(const A& expression, const std::string& shouldbe, const Arg&... arg)
 		{
-			UnitTest::_assert(expression, c_arg(shouldbe), c_arg(arg) ...);
+			UnitTest::_assert(expression, c_val(shouldbe), c_val(arg) ...);
 		}
 	#endif
 
@@ -335,53 +345,45 @@ protected:
 
 		++_this->units;
 		UnitTest ut;
-		long elapsed = _this->usElapse(0);
+		_ut = &ut;
+
 		try
 		{
-			ut.worse = SETTING;
 			T t;
 
-			ut.worse = TESTING;
+			t.worse = TESTING;
+
 			//To access private method Test()
 			Unit<T>* p = &t;
 			p->Test();
 
-			ut.worse = TEARING;
+			t.worse = TEARING;
 		}
-		catch (const Unit<T>*& t)
+		catch (const UnitTest*& p)
 		{
-			--_this->units;
-			ut.whats = t->whats;
-			ut.worse = IGNORED;
+			ut.worse = p->worse;
+			ut.whats = p->whats;
 		}
 		catch (const UnitTest& e)
 		{
-			ut.whats = stateWhen(ut.worse);
-			ut.whats += ", ";
-			ut.whats += e.whats;
 			ut.worse = e.worse;
+			ut.whats = e.whats;
 		}
 		catch (const std::exception& e)
 		{
-			ut.whats = stateWhen(ut.worse);
-			ut.whats += ", ";
-			ut.whats += e.what();
 			ut.worse = ANOMALY;
+			ut.whats = e.what();
 		}
 		catch(...)
 		{
-			ut.whats = stateWhen(ut.worse);
 			ut.worse = UNKNOWN;
+			ut.whats = "unknown exception";
 		}
 
-		ut.elapsed = _this->usElapse(elapsed);
-		if (ut.worse == TEARING) {
-			ut.whats = ssprintf("%lgs", ut.elapsed / 1e6);
-			ut.worse = SUCCESS;
-		}
+		_ut = NULL;
 		_this->elapsed += ut.elapsed;
-		_this->result(ut.worse);
-		_this->report(name(), ut.worse, ut.whats);
+		_this->evolve(ut.worse);
+		_this->report(ut.stage, ut.worse, ut.whats);
 	}
 
 	static void setLatest()
@@ -390,31 +392,33 @@ protected:
 		UnitTest::setLatest(&ut);
 	}
 
-	static T* initialize()
+	static UnitTest* initialize()
 	{
 		funcs()[name()] = runTest;
 		setLatest();
 		return NULL;
 	}
 
-	static T* _t;
+	static UnitTest* _ut;
 };
 
 template<class T>
-T* Unit<T>::_t = Unit<T>::initialize();
+UnitTest* Unit<T>::_ut = Unit<T>::initialize();
 
-/// To test private methods,  use public abstract interface or friend.
-/// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total.
+/// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
 /// 
+/// For VC++ 7.0 and later, add "template<>" before every unit test structure
 /// Tested on SunOS 5.5.1
+///
+/// To access private methods via public abstract interface or using friend
 ///
 /// Example:
 #if 0
 /* Add this header file into your project */
 #include "CppUnitTestExpress.h"
 
-/* Write a test unit given a name. */
+/* Write a unit test given a name. */
 class TestOne : public Unit<TestOne>
 {
 public:
@@ -425,9 +429,6 @@ public:
 
 	void Test()
 	{
-		/* ignore this test */
-		throw this;
-
 		/* throw failure */
 		_assert(true, "It should be true.");
 	}
@@ -445,12 +446,13 @@ int main(int argc, char* argv[])
 	ut.runAll("TestOne"); //Run and report your unit test. 
 	ut.runAll("Test*");  //Run and report all unit tests whose names begin with Test.
 	ut.runAll(); //Run and report all unit tests.
-	return ut.result();
+	return 0;
 }
 
 /* Run and report all unit tests by default. */
 int main(int argc, char* argv[])
 {
+	return 0;
 }
 #endif
 #endif //_CPP_UNIT_TEST_EXPRESS_H_

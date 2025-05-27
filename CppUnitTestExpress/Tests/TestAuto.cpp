@@ -1,106 +1,77 @@
-#include "../CppUnitTestExpress.h"
+#include "..\stdafx.h"
+#include "..\CppUnitTestExpress.h"
 
-class TestStringComparaison : public Unit<TestStringComparaison> {
+#ifdef _WIN32
+#include <windows.h>
+#define SLEEP(seconds) Sleep((seconds) * 1000)
+#else
+#include <unistd.h>
+#define SLEEP(seconds) sleep(seconds)
+#endif
+
+#define VALUES \
+V(3.14f, 3.14, 3)
+
+class TestAuto_ctor : public Unit<TestAuto_ctor> {
 public:
-	virtual void Test() {
-		const char* const_chars = "";
-		char const* chars_const = "";
-		char* chars = "";
-		char char_arr[10] = "";
-		char char_arr2[20] = "";
-
-		std::string std_str = "";
-		wchar_t* wcs_str = L"";
-		const wchar_t* const_wcs_str = L"";
-		wchar_t const* wcs_str_const = L"";
-
-		//Value Comparaison 
-		UnitTest::_assert(const_chars == "", "const char*");
-		UnitTest::_assert(chars_const == "", "char const *");
-		UnitTest::_assert(chars == "", "char *");
-		UnitTest::_assert(strcmp(char_arr, "") == 0, "char []");
-
-		UnitTest::_assert(std_str == "", "std::string");
-		UnitTest::_assert(wcs_str == L"", "wchar_t *");
-		UnitTest::_assert(const_wcs_str == L"", "const wchar_t *");
-		UnitTest::_assert(wcs_str_const == L"", "wchar_t const *");
-
-		char_arr[0] = '1';
-		char_arr[1] = '1';
-		char_arr[2] = ':';
-		char_arr[3] = '2';
-		char_arr[4] = '0';
-		char_arr[5] = '\0';
-
-		char_arr2[0] = '1';
-		char_arr2[1] = '1';
-		char_arr2[2] = ':';
-		char_arr2[3] = '2';
-		char_arr2[4] = '0';
-		char_arr2[5] = '\0';
-
-		UnitTest::_assert(strcmp(char_arr, "11:20") == 0, "char [10] is equal to 11:20");
-		UnitTest::_assert(strcmp(char_arr2, char_arr) == 0, "char [20] is equal to char [10]");
-		UnitTest::_assert(strcmp(char_arr, "11:21") <= 0, "char_arr <= 11:21");
-		UnitTest::_assert("11:21" > "11:20", "11:21 > 11:20");
-		UnitTest::_assert("11:21" > "11:20", "11:21 > 11:20");
-		UnitTest::_assert("11:20" < "11:21", "11:20 < 11:21");
-		UnitTest::_assert("11:21" <= "11:21", "11:21 <= 11:21");
-		UnitTest::_assert("11:21" == "11:21", "11:21 >= 11:21");
+	TestAuto_ctor() {
+		throw this;
 	}
+
+	void Test() {}
 };
 
-class TestAssertExpression : public Unit<TestAssertExpression> {
-	void Test() {
-		float ft = 1.0;
-		int it = 1;
-		unsigned ut = 1;
-		char char_arr[10] = { "11:20" };
-		char char_arr2[20] = { "11:20" };
-
-		UnitTest::_assert(ft == it, "ft is equal to it");
-
-		UnitTest::_assert(ft == it, "ft == it");
-		UnitTest::_assert(ft == ut, "ft == ut");
-
-		wchar_t const* wcs_str_const = L"test";
-		UnitTest::_assert(wcs_str_const == L"test", "wchar_t const *");
-		UnitTest::_assert(wcs_str_const == L"test", "wchar_t const *");
-
-		const char* const_chars = "test";
-		UnitTest::_assert(const_chars == "test", "const_chars == test");
-
-		UnitTest::_assert(char_arr != "11:20", "char [] != char *");
-		UnitTest::_assert(char_arr != char_arr2, "char [10] != char [20]");
-		UnitTest::_assert(char_arr2 < char_arr, "char [20] < char [10]");
-		UnitTest::_assert(char_arr == char_arr, "char [10] == char [10]");
-		UnitTest::_assert("11:35" <= "12:00", "11:35 < 12:00");
-		UnitTest::_assert("11:35" < "12:00", "11:35 < 12:00");
-
-		std::string str = "11:35";
-		_assert(str < "12:00", "11:35 < 12:00");
-		_assert(str > "11:00", "11:35 > 11:00");
-	}
-};
-
-class TestVariadicArgument : public Unit<TestVariadicArgument> {
-	void Test() {
-		char char_arrary[20] = { "test" };
-		std::string std_string = char_arrary;
-		const char* const_chars = std_string.c_str();
-
-		dprintf("SUCCESS:%d, %s, %s, %s\n", SUCCESS, const_chars, char_arrary, std_string);
-
-		_assert(0 == strcmp(c_arg(std_string), std_string.c_str()), "Should be same: %s == %s", std_string, std_string.c_str());
-		_assert(0 == strcmp(c_arg(const_chars), char_arrary), "Should be same");
-		_assert(c_arg(1) == 1, "Should be equal");
-		_assert(c_arg(1.1) == 1.1, "Should be equal");
-		_assert(c_arg(SUCCESS) == SUCCESS, "Should be equal");
-	}
-};
-
-class TestIgnoreTest : public Unit<TestIgnoreTest> {
+class TestAuto_Test : public Unit<TestAuto_Test> {
 	void Test() {
 		throw this;
 	}
 };
+
+class TestAuto_enum_STATE : public Unit<TestAuto_enum_STATE> {
+	void Test() {
+		_assert(SUCCESS == 0, "STATE.SUCCESS shouble be 0.");
+	}
+};
+
+class TestAuto_usElapse : public Unit<TestAuto_usElapse> {
+	void Test() {
+		long us = usElapse(0);
+		SLEEP(1);
+		long seconds = usElapse(us) / 1e6;
+		_assert(seconds == 1, "Time elapsed shouble be 1s but %lds.", seconds);
+		SLEEP(1);
+		seconds = usElapse(us) / 1e6;
+		_assert(seconds == 2, "Time elapsed shouble be 2s but %lds.", seconds);
+	}
+};
+
+class TestAuto_dprintf_assert : public Unit<TestAuto_dprintf_assert> {
+	void Test() {
+		#define V(f, d, i) \
+			char a[6] = {#f}; \
+			dprintf("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s\n", SUCCESS, f, d, i, #f, a); \
+			_assert(f != d, "assert float %f and double %lf", f, d); \
+			_assert(f != i, "assert float %f and integer %d", f, i); \
+			_assert(strcmp(a, #f) == 0, "assert char[] %s and char* %s", a, #f); \
+			_assert(strcmp(#f, #d), "assert compare char* between %s and %s", std::string(#f), #d);
+			VALUES
+		#undef V
+	}
+};
+
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
+class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
+	void Test() {
+		#define V(f, d, i) \
+			char a[6] = {#f}; \
+			dprintf(std::string("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n"), SUCCESS, f, d, i, #f, a, std::string(#f)); \
+			dprintf("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n", SUCCESS, f, d, i, #f, a, std::string(#f)); \
+			_assert(f != d, std::string("assert float %f and double %lf"), f, d); \
+			_assert(f != i, std::string("assert float %f and integer %d"), f, i); \
+			_assert(strcmp(a, #f) == 0, std::string("assert char[] %s and char* %s"), a, #f); \
+			_assert(strcmp(#f, #d), std::string("assert compare char* between %s and %s"), std::string(#f), #d);
+			VALUES
+		#undef V
+	}
+};
+#endif
