@@ -2,7 +2,6 @@
 #include "..\CppUnitTestExpress.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #define SLEEP(seconds) Sleep((seconds) * 1000)
 #else
 #include <unistd.h>
@@ -100,11 +99,6 @@ public:
 	}
 
 	virtual int resume() {
-		time_t now = time(0);
-		struct tm tmLocal = *localtime(&now);
-		char sDateISO[sizeof "2022-08-23T10:40:20Z"];
-		strftime(sDateISO, sizeof sDateISO, "%Y-%m-%d %H:%M:%S", &tmLocal);
-
 		dprintf("\n");
 		dprintf(whats.c_str());
 		dprintf("\t\t----------------------------------------\n"
@@ -113,7 +107,7 @@ public:
 			units,
 			units > 1 ? "units" : "unit",
 			elapsed / 1e6,
-			sDateISO,
+			isoNow().c_str(),
 			stateName(worse));
 		return worse;
 	}
