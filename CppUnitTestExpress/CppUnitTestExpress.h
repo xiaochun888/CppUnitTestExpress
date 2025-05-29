@@ -24,12 +24,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <time.h>
-#include <map>
-#include <string>
 #include <typeinfo>
+#include <string>
+#include <map>
+
 #ifdef _WIN32
 #include <windows.h>
-#pragma warning (disable:4996)
 #endif
 
 #define UNIT_TEST_STATES \
@@ -127,11 +127,41 @@ public:
 			tv.tv_sec = (long)timed;
 			tv.tv_usec = (long)((timed - tv.tv_sec) * 1e6);
 		#else
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
+			//struct timeval tv;
+			//gettimeofday(&tv, NULL);
+			struct timeval
+			{
+				long tv_sec;
+				long tv_usec;
+			} tv;
+
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			tv.tv_sec = ts.tv_sec;
+			tv.tv_usec = ts.tv_nsec / 1000;
+			// Handle potential overflow (though unlikely with normal values)
+			if (ts->tv_nsec % 1000 >= 500) {
+				tv->tv_usec += 1;  // Round up if necessary
+			}
 		#endif
 
 		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
+	}
+
+	static std::string isoNow() {
+		time_t ttNow = time(0);
+		struct tm tmDay;
+		memset(&tmDay, 0, sizeof(struct tm));
+
+		#ifdef _WIN32
+		localtime_s(&tmDay, &ttNow);
+		#else
+		localtime_r(&ttNow, &tmDay);
+		#endif
+
+		char isoDate[sizeof "2022-08-23T10:40:20Z"];
+		strftime(isoDate, sizeof isoDate, "%Y-%m-%d %H:%M:%S", &tmDay);
+		return isoDate;
 	}
 
 	/*****************************************************************************
@@ -166,11 +196,6 @@ public:
 
 	virtual int resume()
 	{
-		time_t now = time(0);
-		struct tm tmLocal = *localtime(&now);
-		char sDateISO[sizeof "2022-08-23T10:40:20Z"];
-		strftime(sDateISO, sizeof sDateISO, "%Y-%m-%d %H:%M:%S", &tmLocal);
-
 		dprintf("\n");
 		dprintf(whats.c_str());
 		dprintf("\t----------------------------------------\n"
@@ -179,7 +204,7 @@ public:
 				units,
 				units > 1 ? "units":"unit",
 				elapsed / 1e6,
-				sDateISO,
+				isoNow().c_str(),
 				stateName(worse));
 		return worse;
 	}
@@ -343,6 +368,7 @@ public:
 
 protected:
 	UnitTest* _ut;
+
 	static std::string name()
 	{
 		std::string className = typeid(T).name();
