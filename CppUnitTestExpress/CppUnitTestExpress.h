@@ -91,7 +91,7 @@ public:
 	}
 
 	/*****************************************************************************
-	* Utilities
+	* Test tools
 	******************************************************************************/
 	static void dprintf(const char* format, ...)
 	{
@@ -109,7 +109,7 @@ public:
 		};
 	}
 
-	static long usElapse(long uold)
+	static long usElapse(long usOld)
 	{
 		#ifdef _WIN32
 			struct timeval
@@ -131,13 +131,13 @@ public:
 			gettimeofday(&tv, NULL);
 		#endif
 
-		return (tv.tv_sec * 1000000 + tv.tv_usec - uold);
+		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
 	}
 
 	/*****************************************************************************
 	* Test assert
-	* Use strcmp() or wcscmp() to compare deux arrays of characters.
 	******************************************************************************/
+	//Use strcmp() or wcscmp() to compare deux arrays of characters.
 	template <class A>
 	static void _assert(const A& expression, const char* shouldbe = 0, ...)
 	{
@@ -187,7 +187,7 @@ public:
 	/*****************************************************************************
 	* Test execution
 	******************************************************************************/
-	//pattern possiblly includes the wildcard characters  ?  and  *.
+	//Pattern possiblly includes the wildcard characters  ?  and  *.
 	virtual int runAll(std::string pattern = "")
 	{
 		std::map<std::string, test_func>::iterator it;
@@ -197,7 +197,7 @@ public:
 			}
 		}
 
-		return this->resume();
+		return resume();
 	}
 
 	template <class T> friend class Unit;
@@ -283,24 +283,35 @@ class Unit : public UnitTest {
 public:
 	virtual void Test() = 0;
 
+	Unit(const Unit&) = default;
+
 	Unit() {
-		stage = name();
-		worse = SETTING;
+		_ut = NULL;
 		elapsed = usElapse(0);
 	}
 
 	virtual ~Unit()
+	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
+		noexcept(false)
+	#else
+		throw(std::exception)
+	#endif
 	{
 		elapsed = usElapse(elapsed);
-		if(!std::uncaught_exception()) worse = SUCCESS;
-		stage += stageName(worse);
+		if (_ut) {
+			if (!std::uncaught_exception()) {
+				//Avoid double destruction : the original object and the thrown copy
+				if (_ut->whats.empty()) {
+					_ut->elapsed = elapsed;
+					_ut->worse = SUCCESS;
+					_ut->stage = name() + stageName(_ut->worse);
+					_ut->whats = ssprintf("%lgs", elapsed / 1e6);
+				}
+			}
+		}
 
 		/* force specialization */
-		if (_ut) {
-			_ut->stage = stage;
-			_ut->worse = worse;
-			_ut->whats = ssprintf("%lgs", _ut->elapsed / 1e6);
-		}
+		_t;
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
@@ -331,6 +342,7 @@ public:
 	#endif
 
 protected:
+	UnitTest* _ut;
 	static std::string name()
 	{
 		std::string className = typeid(T).name();
@@ -345,42 +357,38 @@ protected:
 
 		++_this->units;
 		UnitTest ut;
-		_ut = &ut;
-
 		try
 		{
+			ut.worse = SETTING;
 			T t;
 
-			t.worse = TESTING;
-
+			ut.worse = TESTING;
 			//To access private method Test()
 			Unit<T>* p = &t;
 			p->Test();
 
-			t.worse = TEARING;
-		}
-		catch (const UnitTest*& p)
-		{
-			ut.worse = p->worse;
-			ut.whats = p->whats;
+			ut.worse = TEARING;
+			t._ut = &ut;
 		}
 		catch (const UnitTest& e)
 		{
+			ut.stage = name() + stageName(ut.worse);
 			ut.worse = e.worse;
 			ut.whats = e.whats;
 		}
 		catch (const std::exception& e)
 		{
+			ut.stage = name() + stageName(ut.worse);
 			ut.worse = ANOMALY;
 			ut.whats = e.what();
 		}
 		catch(...)
 		{
+			ut.stage = name() + stageName(ut.worse);
 			ut.worse = UNKNOWN;
 			ut.whats = "unknown exception";
 		}
 
-		_ut = NULL;
 		_this->elapsed += ut.elapsed;
 		_this->evolve(ut.worse);
 		_this->report(ut.stage, ut.worse, ut.whats);
@@ -392,18 +400,18 @@ protected:
 		UnitTest::setLatest(&ut);
 	}
 
-	static UnitTest* initialize()
+	static T* initialize()
 	{
 		funcs()[name()] = runTest;
 		setLatest();
 		return NULL;
 	}
 
-	static UnitTest* _ut;
+	static T* _t;
 };
 
 template<class T>
-UnitTest* Unit<T>::_ut = Unit<T>::initialize();
+T* Unit<T>::_t = Unit<T>::initialize();
 
 /// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
