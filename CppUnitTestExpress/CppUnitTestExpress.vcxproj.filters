@@ -41,8 +41,5 @@
     <ClCompile Include="Tests\TestAuto.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\TestMinimal.cpp">
-      <Filter>Tests</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>
