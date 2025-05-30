@@ -63,7 +63,7 @@ class TestAuto_dprintf_assert : public Unit<TestAuto_dprintf_assert> {
 	void Test() {
 		#define V(f, d, i) \
 			char a[6] = {#f}; \
-			dprintf("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s\n", SUCCESS, f, d, i, #f, a); \
+			dprintf("enum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s\n", SUCCESS, f, d, i, #f, a); \
 			_assert(f != d, "assert float %f and double %lf", f, d); \
 			_assert(f != i, "assert float %f and integer %d", f, i); \
 			_assert(strcmp(a, #f) == 0, "assert char[] %s and char* %s", a, #f); \
@@ -79,8 +79,8 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 	void Test() {
 		#define V(f, d, i) \
 			char a[6] = {#f}; \
-			dprintf(std::string("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n"), SUCCESS, f, d, i, #f, a, std::string(#f)); \
-			dprintf("\tenum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n", SUCCESS, f, d, i, #f, a, std::string(#f)); \
+			dprintf(std::string("enum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n"), SUCCESS, f, d, i, #f, a, std::string(#f)); \
+			dprintf("enum: %d, float: %f, double: %lf, integer: %d, char*: %s, char[]: %s, string: %s\n", SUCCESS, f, d, i, #f, a, std::string(#f)); \
 			_assert(f != d, std::string("assert float %f and double %lf"), f, d); \
 			_assert(f != i, std::string("assert float %f and integer %d"), f, i); \
 			_assert(strcmp(a, #f) == 0, std::string("assert char[] %s and char* %s"), a, #f); \
@@ -95,15 +95,15 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 class UnitTestEx : public UnitTest {
 public:
 	virtual void report(std::string stage, STATE state, std::string what) {
-		whats += ssprintf("\t\t%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
+		whats += ssprintf("%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
 	}
 
 	virtual int resume() {
 		dprintf("\n");
 		dprintf(whats.c_str());
-		dprintf("\t\t----------------------------------------\n"
-			"\t\tExecuted: %d %s, %lgs at %s\n"
-			"\t\tResulted: %s\n\n",
+		dprintf("----------------------------------------\n"
+			"Executed: %d %s, %lgs at %s\n"
+			"Resulted: %s\n\n",
 			units,
 			units > 1 ? "units" : "unit",
 			elapsed / 1e6,

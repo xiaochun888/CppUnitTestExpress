@@ -308,8 +308,6 @@ class Unit : public UnitTest {
 public:
 	virtual void Test() = 0;
 
-	Unit(const Unit&) = default;
-
 	Unit() {
 		_ut = NULL;
 		elapsed = usElapse(0);
@@ -442,9 +440,6 @@ T* Unit<T>::_t = Unit<T>::initialize();
 /// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
 /// 
-/// For VC++ 7.0 and later, add "template<>" before every unit test structure
-/// Tested on SunOS 5.5.1
-///
 /// To access private methods via public abstract interface or using friend
 ///
 /// Example:
@@ -453,21 +448,21 @@ T* Unit<T>::_t = Unit<T>::initialize();
 #include "CppUnitTestExpress.h"
 
 /* Write a unit test given a name. */
-class TestOne : public Unit<TestOne>
+class Example : public Unit<Example>
 {
 public:
-	TestOne()
+	Example()
 	{
 		/* Set up */
 	}
 
 	void Test()
 	{
-		/* throw failure */
+		/* Throw if false.*/
 		_assert(true, "It should be true.");
 	}
 
-	~TestOne()
+	~Example()
 	{
 		/* Tear down */
 	}
@@ -477,8 +472,8 @@ public:
 int main(int argc, char* argv[])
 {
 	UnitTest ut;
-	ut.runAll("TestOne"); //Run and report your unit test. 
-	ut.runAll("Test*");  //Run and report all unit tests whose names begin with Test.
+	ut.runAll("Example"); //Run and report your unit test. 
+	ut.runAll("Ex*");  //Run and report all unit tests whose names begin with "Ex".
 	ut.runAll(); //Run and report all unit tests.
 	return 0;
 }
