@@ -114,7 +114,14 @@ public:
 
 	virtual int runAll(std::string pattern = "")
 	{
-		return UnitTest::runAll(pattern);
+		std::map<std::string, test_func>::iterator it;
+		for (it = funcs().begin(); it != funcs().end(); it++) {
+			if (pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
+				it->second(this);
+			}
+		}
+
+		return resume();
 	}
 };
 

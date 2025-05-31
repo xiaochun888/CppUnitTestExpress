@@ -71,9 +71,9 @@ public:
 	{
 		units = 0;
 		elapsed = 0;
-		isLatest = false;
+		runner = false;
 		whats = "";
-		stage = "";
+		where = "";
 		worse = SUCCESS;
 	}
 
@@ -85,7 +85,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (isLatest) {
+		if (runner) {
 			runAll();
 		}
 	}
@@ -229,9 +229,9 @@ public:
 protected:
 	int units;
 	long elapsed;
-	bool isLatest;
+	bool runner;
 	std::string whats;
-	std::string stage;
+	std::string where;
 	STATE worse;
 
 	STATE evolve(STATE state)
@@ -290,8 +290,8 @@ protected:
 
 	static void setLatest(UnitTest* ut) {
 		static UnitTest* _latest = NULL;
-		if (_latest) _latest->isLatest = false;
-		if (ut) ut->isLatest = true;
+		if (_latest) _latest->runner = false;
+		if (ut) ut->runner = true;
 		_latest = ut;
 	}
 
@@ -327,7 +327,7 @@ public:
 				if (_ut->whats.empty()) {
 					_ut->elapsed = elapsed;
 					_ut->worse = SUCCESS;
-					_ut->stage = name() + stageName(_ut->worse);
+					_ut->where = name() + stageName(_ut->worse);
 					_ut->whats = ssprintf("%lgs", elapsed / 1e6);
 				}
 			}
@@ -396,26 +396,26 @@ protected:
 		}
 		catch (const UnitTest& e)
 		{
-			ut.stage = name() + stageName(ut.worse);
+			ut.where = name() + stageName(ut.worse);
 			ut.worse = e.worse;
 			ut.whats = e.whats;
 		}
 		catch (const std::exception& e)
 		{
-			ut.stage = name() + stageName(ut.worse);
+			ut.where = name() + stageName(ut.worse);
 			ut.worse = ANOMALY;
 			ut.whats = e.what();
 		}
 		catch(...)
 		{
-			ut.stage = name() + stageName(ut.worse);
+			ut.where = name() + stageName(ut.worse);
 			ut.worse = UNKNOWN;
 			ut.whats = "unknown exception";
 		}
 
 		_this->elapsed += ut.elapsed;
 		_this->evolve(ut.worse);
-		_this->report(ut.stage, ut.worse, ut.whats);
+		_this->report(ut.where, ut.worse, ut.whats);
 	}
 
 	static void setLatest()
@@ -458,7 +458,7 @@ public:
 
 	void Test()
 	{
-		/* Throw if false.*/
+		/* Throw FAILURE if false.*/
 		_assert(true, "It should be true.");
 	}
 
