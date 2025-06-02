@@ -148,7 +148,7 @@ public:
 		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
 	}
 
-	static std::string isoNow() {
+	static std::string localNow() {
 		time_t ttNow = time(0);
 		struct tm tmDay;
 		memset(&tmDay, 0, sizeof(struct tm));
@@ -204,7 +204,7 @@ public:
 				units,
 				units > 1 ? "units":"unit",
 				elapsed / 1e6,
-				isoNow().c_str(),
+				localNow().c_str(),
 				stateName(worse));
 		return worse;
 	}
