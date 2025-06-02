@@ -107,7 +107,7 @@ public:
 			units,
 			units > 1 ? "units" : "unit",
 			elapsed / 1e6,
-			isoNow().c_str(),
+			localNow().c_str(),
 			stateName(worse));
 		return worse;
 	}
