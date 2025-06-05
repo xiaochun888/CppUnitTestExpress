@@ -148,7 +148,7 @@ public:
 		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
 	}
 
-	static std::string localNow() {
+	static std::string localDate() {
 		time_t ttNow = time(0);
 		struct tm tmDay;
 		memset(&tmDay, 0, sizeof(struct tm));
@@ -159,9 +159,9 @@ public:
 		localtime_r(&ttNow, &tmDay);
 		#endif
 
-		char isoDate[sizeof "2022-08-23T10:40:20Z"];
-		strftime(isoDate, sizeof isoDate, "%Y-%m-%d %H:%M:%S", &tmDay);
-		return isoDate;
+		char strDate[sizeof "2022-08-23T10:40:20Z"];
+		strftime(strDate, sizeof isoDate, "%Y-%m-%d %H:%M:%S", &tmDay);
+		return strDate;
 	}
 
 	/*****************************************************************************
@@ -204,7 +204,7 @@ public:
 				units,
 				units > 1 ? "units":"unit",
 				elapsed / 1e6,
-				localNow().c_str(),
+				localDate().c_str(),
 				stateName(worse));
 		return worse;
 	}
