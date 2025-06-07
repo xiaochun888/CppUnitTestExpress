@@ -324,7 +324,7 @@ public:
 		if (_ut) {
 			if (!std::uncaught_exception()) {
 				//Avoid double destruction : the original object and the thrown copy
-				if (_ut->whats.empty()) {
+				if (_ut->worse < SUCCESS) {
 					_ut->elapsed = elapsed;
 					_ut->worse = SUCCESS;
 					_ut->where = name() + stageName(_ut->worse);
