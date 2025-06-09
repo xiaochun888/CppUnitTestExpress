@@ -166,8 +166,8 @@ public:
 
 	/*****************************************************************************
 	* Test assert
+	* Use strcmp() or wcscmp() to compare deux arrays of characters.
 	******************************************************************************/
-	//Use strcmp() or wcscmp() to compare deux arrays of characters.
 	template <class A>
 	static void _assert(const A& expression, const char* shouldbe = 0, ...)
 	{
@@ -213,10 +213,10 @@ public:
 	/*****************************************************************************
 	* Test execution
 	******************************************************************************/
-	//Pattern possiblly includes the wildcard characters  ?  and  *.
+	//The pattern optionally includes the wildcard characters ? , *, and ^.
 	virtual int runAll(std::string pattern = "")
 	{
-		pattern = which(pattern);
+		if(pattern.empty()) pattern = which();
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = funcs().begin(); it != funcs().end(); it++){
@@ -270,7 +270,7 @@ protected:
 		return sOut;
 	}
 
-	//Match wild card characters  ?,  * and ^.
+	//Match the wildcard characters ?, *, and ^.
 	static bool wcMatch(const char* str, const char* pattern)
 	{
 		if (*pattern == '\0' && *str == '\0')
@@ -294,6 +294,7 @@ protected:
 		return false;
 	}
 
+	//The pattern optionally includes the wildcard characters ?, *, and ^.
 	static std::string which(std::string pattern = "") {
 		static std::string _which;
 		if (!pattern.empty()) {
@@ -358,14 +359,16 @@ public:
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
-		//nested type using typename
+		
+		//Match integral, floating point, boolean, char or enum.
 		template <typename T, typename std::enable_if<!std::is_base_of<std::string, T>::value>::type* = nullptr>
 		static T c_val(const T& value)
 		{
-			//integral, floating point, boolean, char or enum
+			//nested type using typename
 			return value;
 		}
-		//std::string, const char* et char[]
+
+		//Match std::string, const char* or char[].
 		static const char* c_val(const std::string& value)
 		{
 			return value.c_str();
@@ -460,9 +463,11 @@ protected:
 template<class T>
 T* Unit<T>::_t = Unit<T>::initialize();
 
+//Run the test excluding the others
 template<class T>
 class Only : public Unit<T> {};
 
+//Run the others excluding the test
 template<class T>
 class Skip : public Unit<T> {};
 
