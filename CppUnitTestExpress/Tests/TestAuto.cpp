@@ -59,6 +59,20 @@ class TestAuto_usElapse : public Unit<TestAuto_usElapse> {
 	}
 };
 
+class TestAuto_wcMatch : public Unit<TestAuto_wcMatch> {
+	void Test() {
+		#define V(f, d, i) \
+			_assert(wcMatch(#f, #d"*"), "%s matchs \"%s\"", #f, #d"*"); \
+			_assert(wcMatch(#f, #d"?"), "%s matchs \"%s\"", #f, #d"?"); \
+			_assert(wcMatch(#f, #i"*"), "%s matchs \"%s\"", #f, #i"*"); \
+			_assert(wcMatch(#f, #i"????"), "%s matchs \"%s\"", #f, #i"????"); \
+			_assert(!wcMatch(#f, "^"#f), "%s doesn't match \"%s\"", #f, "^"#f); \
+			_assert(!wcMatch(#f, "^"#d"*"), "%s doesn't match \"%s\"", #f, "^"#d"*");
+			VALUES
+		#undef V
+	}
+};
+
 class TestAuto_dprintf_assert : public Unit<TestAuto_dprintf_assert> {
 	void Test() {
 		#define V(f, d, i) \
@@ -106,7 +120,7 @@ public:
 			"Resulted: %s\n\n",
 			units,
 			units > 1 ? "units" : "unit",
-			elapsed / 1e6,
+			spent / 1e6,
 			localDate().c_str(),
 			stateName(worse));
 		return worse;
