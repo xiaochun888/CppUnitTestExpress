@@ -70,8 +70,8 @@ public:
 	UnitTest()
 	{
 		units = 0;
-		elapsed = 0;
-		runner = false;
+		spent = 0;
+		final = false;
 		whats = "";
 		where = "";
 		worse = SUCCESS;
@@ -85,7 +85,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (runner) {
+		if (final) {
 			runAll();
 		}
 	}
@@ -199,11 +199,12 @@ public:
 		dprintf("\n");
 		dprintf(whats.c_str());
 		dprintf("\t----------------------------------------\n"
-				"\tExecuted: %d %s, %lgs at %s\n"
+				"\tExecuted: %d/%d %s, %lgs at %s\n"
 				"\tResulted: %s\n\n",
 				units,
-				units > 1 ? "units":"unit",
-				elapsed / 1e6,
+				funcs().size(),
+				units > 1 ? "units" : "unit",
+				spent / 1e6,
 				localDate().c_str(),
 				stateName(worse));
 		return worse;
@@ -215,6 +216,8 @@ public:
 	//Pattern possiblly includes the wildcard characters  ?  and  *.
 	virtual int runAll(std::string pattern = "")
 	{
+		pattern = which(pattern);
+
 		std::map<std::string, test_func>::iterator it;
 		for (it = funcs().begin(); it != funcs().end(); it++){
 			if(pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
@@ -228,8 +231,8 @@ public:
 	template <class T> friend class Unit;
 protected:
 	int units;
-	long elapsed;
-	bool runner;
+	long spent;
+	bool final;
 	std::string whats;
 	std::string where;
 	STATE worse;
@@ -267,7 +270,7 @@ protected:
 		return sOut;
 	}
 
-	//Match wild card characters  ?  and  *.
+	//Match wild card characters  ?,  * and ^.
 	static bool wcMatch(const char* str, const char* pattern)
 	{
 		if (*pattern == '\0' && *str == '\0')
@@ -285,14 +288,31 @@ protected:
 		if (*pattern == '*')
 			return wcMatch(str, pattern + 1) || wcMatch(str + 1, pattern);
 
+		if (*pattern == '^')
+			return !wcMatch(str, pattern + 1);
+
 		return false;
 	}
 
-	static void setLatest(UnitTest* ut) {
-		static UnitTest* _latest = NULL;
-		if (_latest) _latest->runner = false;
-		if (ut) ut->runner = true;
-		_latest = ut;
+	static std::string which(std::string pattern = "") {
+		static std::string _which;
+		if (!pattern.empty()) {
+			if (_which.empty()) {
+				_which = pattern;
+				dprintf("Pattern applied: \"%s\"\n", pattern.c_str());
+			}
+			else {
+				dprintf("Pattern ignored: \"%s\"\n", pattern.c_str());
+			}
+		}
+		return _which;
+	}
+
+	static void setFinal(UnitTest* ut) {
+		static UnitTest* _final = NULL;
+		if (_final) _final->final = false;
+		if (ut) ut->final = true;
+		_final = ut;
 	}
 
 	typedef void (*test_func)(UnitTest* _this);
@@ -310,7 +330,7 @@ public:
 
 	Unit() {
 		_ut = NULL;
-		elapsed = usElapse(0);
+		spent = usElapse(0);
 	}
 
 	virtual ~Unit()
@@ -320,15 +340,15 @@ public:
 		throw(std::exception)
 	#endif
 	{
-		elapsed = usElapse(elapsed);
+		spent = usElapse(spent);
 		if (_ut) {
 			if (!std::uncaught_exception()) {
 				//Avoid double destruction : the original object and the thrown copy
 				if (_ut->worse < SUCCESS) {
-					_ut->elapsed = elapsed;
+					_ut->spent = spent;
 					_ut->worse = SUCCESS;
 					_ut->where = name() + stageName(_ut->worse);
-					_ut->whats = ssprintf("%lgs", elapsed / 1e6);
+					_ut->whats = ssprintf("%lgs", spent / 1e6);
 				}
 			}
 		}
@@ -377,7 +397,7 @@ protected:
 
 	static void runTest(UnitTest* _this)
 	{
-		UnitTest::setLatest(NULL);
+		UnitTest::setFinal(NULL);
 
 		++_this->units;
 		UnitTest ut;
@@ -413,21 +433,24 @@ protected:
 			ut.whats = "unknown exception";
 		}
 
-		_this->elapsed += ut.elapsed;
+		_this->spent += ut.spent;
 		_this->evolve(ut.worse);
 		_this->report(ut.where, ut.worse, ut.whats);
 	}
 
-	static void setLatest()
+	static void setFinal()
 	{
 		static UnitTest ut;
-		UnitTest::setLatest(&ut);
+		UnitTest::setFinal(&ut);
 	}
 
 	static T* initialize()
 	{
+		if (std::is_base_of<Only<T>, T>::value) which(name());
+		if (std::is_base_of<Skip<T>, T>::value) which("^" + name());
+
 		funcs()[name()] = runTest;
-		setLatest();
+		setFinal();
 		return NULL;
 	}
 
@@ -436,6 +459,12 @@ protected:
 
 template<class T>
 T* Unit<T>::_t = Unit<T>::initialize();
+
+template<class T>
+class Only : public Unit<T> {};
+
+template<class T>
+class Skip : public Unit<T> {};
 
 /// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
