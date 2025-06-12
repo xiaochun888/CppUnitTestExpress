@@ -160,7 +160,7 @@ public:
 		#endif
 
 		char strDate[sizeof "2022-08-23T10:40:20Z"];
-		strftime(strDate, sizeof strDate, "%Y-%m-%d %H:%M:%S", &tmDay);
+		strftime(strDate, sizeof strDate, "%x %H:%M:%S", &tmDay);
 		return strDate;
 	}
 
