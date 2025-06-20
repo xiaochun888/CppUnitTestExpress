@@ -32,6 +32,16 @@
 #include <windows.h>
 #endif
 
+/**
+Ensures symbol remains in object file even if unused
+Prevents compiler optimization from removing the instantiation
+*/
+#if defined(__GNUC__) || defined(__clang__)
+#define FORCE_USED __attribute__((used))
+#else
+#define FORCE_USED
+#endif
+
 #define UNIT_TEST_STATES \
 X(SETTING, "::ctor()") \
 X(TESTING, "::Test()") \
@@ -127,8 +137,6 @@ public:
 			tv.tv_sec = (long)timed;
 			tv.tv_usec = (long)((timed - tv.tv_sec) * 1e6);
 		#else
-			//struct timeval tv;
-			//gettimeofday(&tv, NULL);
 			struct timeval
 			{
 				long tv_sec;
@@ -140,8 +148,8 @@ public:
 			tv.tv_sec = ts.tv_sec;
 			tv.tv_usec = ts.tv_nsec / 1000;
 			// Handle potential overflow (though unlikely with normal values)
-			if (ts->tv_nsec % 1000 >= 500) {
-				tv->tv_usec += 1;  // Round up if necessary
+			if (ts.tv_nsec % 1000 >= 500) {
+				tv.tv_usec += 1;  // Round up if necessary
 			}
 		#endif
 
@@ -324,6 +332,9 @@ protected:
 	}
 };
 
+template <class T> class Only;
+template <class T> class Skip;
+
 template<class T>
 class Unit : public UnitTest {
 public:
@@ -361,8 +372,8 @@ public:
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
 		
 		//Match integral, floating point, boolean, char or enum.
-		template <typename T, typename std::enable_if<!std::is_base_of<std::string, T>::value>::type* = nullptr>
-		static T c_val(const T& value)
+		template <typename A, typename std::enable_if<!std::is_base_of<std::string, A>::value>::type* = nullptr>
+		static A c_val(const A& value)
 		{
 			//nested type using typename
 			return value;
@@ -457,17 +468,17 @@ protected:
 		return NULL;
 	}
 
-	static T* _t;
+	static T* FORCE_USED _t;
 };
 
 template<class T>
 T* Unit<T>::_t = Unit<T>::initialize();
 
-//Run the test excluding the others
+//Only this test
 template<class T>
 class Only : public Unit<T> {};
 
-//Run the others excluding the test
+//Skip this test
 template<class T>
 class Skip : public Unit<T> {};
 
