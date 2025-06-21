@@ -146,7 +146,8 @@ class TestAuto_extended : public Unit<TestAuto_extended> {
 			extended = true;
 
 			UnitTestEx ex;
-			_assert(ex.runAll(name()) == UNKNOWN, "throw UNKNOWN");
+			UnitTest* _ut = &ex;
+			_assert(_ut->runAll(name()) == UNKNOWN, "throw UNKNOWN");
 		}
 		else {
 			worse = UNKNOWN;
