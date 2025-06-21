@@ -365,7 +365,7 @@ public:
 			}
 		}
 
-		/* force specialization */
+		/* force used */
 		_t;
 	}
 
