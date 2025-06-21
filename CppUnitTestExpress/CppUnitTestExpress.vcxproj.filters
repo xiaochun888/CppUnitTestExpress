@@ -38,10 +38,10 @@
     <ClCompile Include="CppUnitTestExpress.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\TestAuto.cpp">
+    <ClCompile Include="Tests\TestMinimal.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
-    <ClCompile Include="Tests\TestMinimal.cpp">
+    <ClCompile Include="Tests\TestAuto.cpp">
       <Filter>Tests</Filter>
     </ClCompile>
   </ItemGroup>
