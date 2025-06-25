@@ -204,17 +204,20 @@ public:
 
 	virtual int resume()
 	{
+		std::string sGrouping = grouping().empty() ? "" : "Grouping: " + grouping() + "\n";
 		dprintf("\n");
 		dprintf(whats.c_str());
 		dprintf("\t----------------------------------------\n"
 				"\tExecuted: %d/%d %s, %lgs at %s\n"
-				"\tResulted: %s\n\n",
+				"\tResulted: %s\n"
+				"\t%s\n",
 				units,
 				funcs().size(),
 				units > 1 ? "units" : "unit",
 				spent / 1e6,
 				localDate().c_str(),
-				stateName(worse));
+				stateName(worse),
+				sGrouping.c_str());
 		return worse;
 	}
 
@@ -224,7 +227,7 @@ public:
 	//The pattern optionally includes the wildcard characters ? , *, and ^.
 	virtual int runAll(std::string pattern = "")
 	{
-		if(pattern.empty()) pattern = which();
+		if(pattern.empty()) pattern = grouping();
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = funcs().begin(); it != funcs().end(); it++){
@@ -303,18 +306,14 @@ protected:
 	}
 
 	//The pattern optionally includes the wildcard characters ?, *, and ^.
-	static std::string which(std::string pattern = "") {
-		static std::string _which;
+	static std::string grouping(std::string pattern = "") {
+		static std::string _grouping;
 		if (!pattern.empty()) {
-			if (_which.empty()) {
-				_which = pattern;
-				dprintf("Pattern applied: \"%s\"\n", pattern.c_str());
-			}
-			else {
-				dprintf("Pattern ignored: \"%s\"\n", pattern.c_str());
+			if (_grouping.empty()) {
+				_grouping = pattern;
 			}
 		}
-		return _which;
+		return _grouping;
 	}
 
 	static void setFinal(UnitTest* ut) {
@@ -460,8 +459,8 @@ protected:
 
 	static T* initialize()
 	{
-		if (std::is_base_of<Only<T>, T>::value) which(name());
-		if (std::is_base_of<Skip<T>, T>::value) which("^" + name());
+		if (std::is_base_of<Only<T>, T>::value) grouping(name());
+		if (std::is_base_of<Skip<T>, T>::value) grouping("^" + name());
 
 		funcs()[name()] = runTest;
 		setFinal();
