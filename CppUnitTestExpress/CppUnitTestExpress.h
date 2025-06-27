@@ -89,8 +89,8 @@ public:
 
 	UnitTest(STATE state, std::string what) : UnitTest()
 	{
-		whats = what;
 		worse = state;
+		whats = what;
 	}
 
 	~UnitTest() {
@@ -156,22 +156,6 @@ public:
 		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
 	}
 
-	static std::string localDate() {
-		time_t ttNow = time(0);
-		struct tm tmDay;
-		memset(&tmDay, 0, sizeof(struct tm));
-
-		#ifdef _WIN32
-		localtime_s(&tmDay, &ttNow);
-		#else
-		localtime_r(&ttNow, &tmDay);
-		#endif
-
-		char strDate[sizeof "2022-08-23T10:40:20Z"];
-		strftime(strDate, sizeof strDate, "%x %H:%M:%S", &tmDay);
-		return strDate;
-	}
-
 	/*****************************************************************************
 	* Test assert
 	* Use strcmp() or wcscmp() to compare deux arrays of characters.
@@ -197,61 +181,66 @@ public:
 	/*****************************************************************************
 	* Test report
 	******************************************************************************/
-	virtual void report(std::string stage, STATE state, std::string what)
+	virtual std::string report(std::string stage, STATE state, std::string what)
 	{
-		whats += ssprintf("\t%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
+		return ssprintf("\t%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
 	}
 
-	virtual int resume()
+	virtual void resume(int count, int total, long microseconds, STATE state, std::string reports, std::string wildcard)
 	{
-		std::string sGrouping = grouping().empty() ? "" : "Grouping: " + grouping() + "\n";
+		std::string sWhich = wildcard.empty() ? "" : "Matching: " + wildcard + "\n";
+
 		dprintf("\n");
-		dprintf(whats.c_str());
+		dprintf(reports.c_str());
 		dprintf("\t----------------------------------------\n"
 				"\tExecuted: %d/%d %s, %lgs at %s\n"
 				"\tResulted: %s\n"
 				"\t%s\n",
-				units,
-				funcs().size(),
-				units > 1 ? "units" : "unit",
-				spent / 1e6,
+				count,
+				total,
+				count > 1 ? "units" : "unit",
+				microseconds / 1e6,
 				localDate().c_str(),
-				stateName(worse),
-				sGrouping.c_str());
-		return worse;
+				stateName(state),
+				sWhich.c_str());
 	}
 
 	/*****************************************************************************
 	* Test execution
 	******************************************************************************/
-	//The pattern optionally includes the wildcard characters ? , *, and ^.
-	virtual int runAll(std::string pattern = "")
+	//The wildcard characters optionally include ? , *, and ^.
+	int runAll(std::string wildcard = "")
 	{
-		if(pattern.empty()) pattern = grouping();
+		which = wildcard.empty() ? pattern() : wildcard;
 
 		std::map<std::string, test_func>::iterator it;
-		for (it = funcs().begin(); it != funcs().end(); it++){
-			if(pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
+		for (it = tests().begin(); it != tests().end(); it++){
+			if(which.empty() || wcMatch(it->first.c_str(), which.c_str())) {
 				it->second(this);
 			}
 		}
 
-		return resume();
+		resume(units, tests().size(), spent, worse, whats, which);
+		return worse;
 	}
 
-	template <class T> friend class Unit;
-protected:
-	int units;
-	long spent;
-	bool final;
-	std::string whats;
-	std::string where;
-	STATE worse;
+	/*****************************************************************************
+	* Utilities
+	******************************************************************************/
+	static std::string localDate() {
+		time_t ttNow = time(0);
+		struct tm tmDay;
+		memset(&tmDay, 0, sizeof(struct tm));
 
-	STATE evolve(STATE state)
-	{
-		if (state > worse) worse = state;
-		return worse;
+		#ifdef _WIN32
+		localtime_s(&tmDay, &ttNow);
+		#else
+		localtime_r(&ttNow, &tmDay);
+		#endif
+
+		char strDate[sizeof "2022-08-23T10:40:20Z"];
+		strftime(strDate, sizeof strDate, "%x %H:%M:%S", &tmDay);
+		return strDate;
 	}
 
 	static std::string vssprintf(const char* format, va_list args)
@@ -281,39 +270,55 @@ protected:
 		return sOut;
 	}
 
-	//Match the wildcard characters ?, *, and ^.
-	static bool wcMatch(const char* str, const char* pattern)
+	//The wildcard characters optionally include ? , *, and ^.
+	static bool wcMatch(const char* str, const char* wildcard)
 	{
-		if (*pattern == '\0' && *str == '\0')
+		if (*wildcard == '\0' && *str == '\0')
 			return true;
 
-		if (*pattern == '*')
-			while (*(pattern + 1) == '*') pattern++;
+		if (*wildcard == '*')
+			while (*(wildcard + 1) == '*') wildcard++;
 
-		if (*pattern == '*' && *(pattern + 1) != '\0' && *str == '\0')
+		if (*wildcard == '*' && *(wildcard + 1) != '\0' && *str == '\0')
 			return false;
 
-		if (*pattern == '?' || *pattern == *str)
-			return wcMatch(str + 1, pattern + 1);
+		if (*wildcard == '?' || *wildcard == *str)
+			return wcMatch(str + 1, wildcard + 1);
 
-		if (*pattern == '*')
-			return wcMatch(str, pattern + 1) || wcMatch(str + 1, pattern);
+		if (*wildcard == '*')
+			return wcMatch(str, wildcard + 1) || wcMatch(str + 1, wildcard);
 
-		if (*pattern == '^')
-			return !wcMatch(str, pattern + 1);
+		if (*wildcard == '^')
+			return !wcMatch(str, wildcard + 1);
 
 		return false;
 	}
 
-	//The pattern optionally includes the wildcard characters ?, *, and ^.
-	static std::string grouping(std::string pattern = "") {
-		static std::string _grouping;
-		if (!pattern.empty()) {
-			if (_grouping.empty()) {
-				_grouping = pattern;
+	template <class T> friend class Unit;
+private:
+	int units;
+	long spent;
+	bool final;
+	STATE worse;
+	std::string whats;
+	std::string where;
+	std::string which;
+
+	STATE evolve(STATE state)
+	{
+		if (state > worse) worse = state;
+		return worse;
+	}
+
+	//The wildcard characters optionally include ? , *, and ^.
+	static std::string pattern(std::string wildcard = "") {
+		static std::string _pattern;
+		if (!wildcard.empty()) {
+			if (_pattern.empty()) {
+				_pattern = wildcard;
 			}
 		}
-		return _grouping;
+		return _pattern;
 	}
 
 	static void setFinal(UnitTest* ut) {
@@ -324,10 +329,10 @@ protected:
 	}
 
 	typedef void (*test_func)(UnitTest* _this);
-	static std::map<std::string, test_func>& funcs()
+	static std::map<std::string, test_func>& tests()
 	{
-		static std::map<std::string, test_func> _funcs;
-		return _funcs;
+		static std::map<std::string, test_func> _tests;
+		return _tests;
 	}
 };
 
@@ -342,6 +347,11 @@ public:
 	Unit() {
 		_ut = NULL;
 		spent = usElapse(0);
+	}
+
+	Unit(STATE state, std::string what) : Unit() {
+		worse = state;
+		whats = what;
 	}
 
 	virtual ~Unit()
@@ -397,9 +407,6 @@ public:
 		}
 	#endif
 
-protected:
-	UnitTest* _ut;
-
 	static std::string name()
 	{
 		std::string className = typeid(T).name();
@@ -407,6 +414,9 @@ protected:
 		if(typeName == "struct") return className.substr(7); //remove "struct "
 		return className.substr(6); //remove "class "
 	}
+
+private:
+	UnitTest* _ut;
 
 	static void runTest(UnitTest* _this)
 	{
@@ -448,7 +458,7 @@ protected:
 
 		_this->spent += ut.spent;
 		_this->evolve(ut.worse);
-		_this->report(ut.where, ut.worse, ut.whats);
+		_this->whats += _this->report(ut.where, ut.worse, ut.whats);
 	}
 
 	static void setFinal()
@@ -459,10 +469,10 @@ protected:
 
 	static T* initialize()
 	{
-		if (std::is_base_of<Only<T>, T>::value) grouping(name());
-		if (std::is_base_of<Skip<T>, T>::value) grouping("^" + name());
+		if (std::is_base_of<Only<T>, T>::value) pattern(name());
+		if (std::is_base_of<Skip<T>, T>::value) pattern("^" + name());
 
-		funcs()[name()] = runTest;
+		tests()[name()] = runTest;
 		setFinal();
 		return NULL;
 	}
