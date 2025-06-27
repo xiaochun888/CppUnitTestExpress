@@ -13,9 +13,7 @@ V(3.14f, 3.14, 3)
 
 class TestAuto_ctor : public Unit<TestAuto_ctor> {
 public:
-	TestAuto_ctor() {
-		worse = SETTING;
-		whats = "throw *this";
+	TestAuto_ctor() : Unit<TestAuto_ctor>(SETTING, "throw *this") {
 		throw *this;
 	}
 
@@ -25,18 +23,18 @@ public:
 class TestAuto_dtor : public Unit<TestAuto_dtor> {
 public:
 	~TestAuto_dtor() {
-		worse = TEARING;
-		whats = "throw UnitTest(worse, whats)";
 		//Throwing *this on destruction is an error;
-		throw UnitTest(worse, whats);
+		throw UnitTest(TEARING, "throw UnitTest(worse, whats)");
 	}
+
 	void Test() {}
 };
 
 class TestAuto_Test : public Unit<TestAuto_Test> {
+public:
+	TestAuto_Test() : Unit<TestAuto_Test>(TESTING, "throw *this") {}
+
 	void Test() {
-		worse = TESTING;
-		whats = "throw *this";
 		throw *this;
 	}
 };
@@ -108,38 +106,33 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 
 class UnitTestEx : public UnitTest {
 public:
-	virtual void report(std::string stage, STATE state, std::string what) {
-		whats += ssprintf("%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
+	virtual std::string report(std::string stage, STATE state, std::string what) {
+		return ssprintf("%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
 	}
 
-	virtual int resume() {
+	virtual void resume(int count, int total, long microseconds, STATE state, std::string reports, std::string wildcard) {
+		std::string sWhich = wildcard.empty() ? "" : "Matching: " + wildcard + "\n";
+
 		dprintf("\n");
-		dprintf(whats.c_str());
+		dprintf(reports.c_str());
 		dprintf("----------------------------------------\n"
-			"Executed: %d %s, %lgs at %s\n"
-			"Resulted: %s\n\n",
-			units,
-			units > 1 ? "units" : "unit",
-			spent / 1e6,
+			"Executed: %d/%d %s, %lgs at %s\n"
+			"Resulted: %s\n"
+			"%s\n",
+			count,
+			total,
+			count > 1 ? "units" : "unit",
+			microseconds / 1e6,
 			localDate().c_str(),
-			stateName(worse));
-		return worse;
-	}
-
-	virtual int runAll(std::string pattern = "")
-	{
-		std::map<std::string, test_func>::iterator it;
-		for (it = funcs().begin(); it != funcs().end(); it++) {
-			if (pattern.empty() || wcMatch(it->first.c_str(), pattern.c_str())) {
-				it->second(this);
-			}
-		}
-
-		return resume();
+			stateName(state),
+			sWhich.c_str());
 	}
 };
 
 class TestAuto_extended : public Unit<TestAuto_extended> {
+public:
+	TestAuto_extended() : Unit<TestAuto_extended>(UNKNOWN, "throw *this") {}
+
 	void Test() {
 		static bool extended = false;
 		if (extended == false) {
@@ -150,8 +143,6 @@ class TestAuto_extended : public Unit<TestAuto_extended> {
 			_assert(_ut->runAll(name()) == UNKNOWN, "throw UNKNOWN");
 		}
 		else {
-			worse = UNKNOWN;
-			whats = "throw *this";
 			throw *this;
 		}
 	}
