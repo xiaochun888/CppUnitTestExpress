@@ -81,7 +81,7 @@ public:
 	{
 		units = 0;
 		spent = 0;
-		final = false;
+		ended = false;
 		whats = "";
 		where = "";
 		worse = SUCCESS;
@@ -95,7 +95,7 @@ public:
 
 	~UnitTest() {
 		//Last declared and first destroyed
-		if (final) {
+		if (ended) {
 			runAll();
 		}
 	}
@@ -298,7 +298,7 @@ public:
 private:
 	int units;
 	long spent;
-	bool final;
+	bool ended;
 	STATE worse;
 	std::string whats;
 	std::string where;
@@ -323,8 +323,8 @@ private:
 
 	static void setFinal(UnitTest* ut) {
 		static UnitTest* _final = NULL;
-		if (_final) _final->final = false;
-		if (ut) ut->final = true;
+		if (_final) _final->ended = false;
+		if (ut) ut->ended = true;
 		_final = ut;
 	}
 
