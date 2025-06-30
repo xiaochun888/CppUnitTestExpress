@@ -457,8 +457,8 @@ private:
 		}
 
 		_this->spent += ut.spent;
-		_this->evolve(ut.worse);
 		_this->whats += _this->report(ut.where, ut.worse, ut.whats);
+		_this->evolve(ut.worse);
 	}
 
 	static void setFinal()
