@@ -495,6 +495,7 @@ class Skip : public Unit<T> {};
 /// use /Zm to specify a higher limit
 /// 
 /// To access private methods via public abstract interface or using friend
+/// To match virtual base destructor using noexcept, noexcept(true), or throw() 
 ///
 /// Example:
 #if 0
