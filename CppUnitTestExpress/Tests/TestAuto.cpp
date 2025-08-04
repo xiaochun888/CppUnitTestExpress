@@ -104,7 +104,7 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 };
 #endif
 
-class UnitTestEx : public UnitTest {
+class UnitTestDerived : public UnitTest {
 public:
 	virtual std::string report(std::string stage, STATE state, std::string what) {
 		return ssprintf("%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
@@ -127,9 +127,11 @@ public:
 			stateName(state),
 			sWhich.c_str());
 	}
+
+	virtual ~UnitTestDerived() {}
 };
 
-class TestAuto_extended : public Unit<TestAuto_extended> {
+class TestAuto_extended : public Unit<TestAuto_extended>, public UnitTestDerived {
 public:
 	TestAuto_extended() : Unit<TestAuto_extended>(UNKNOWN, "throw *this") {}
 
@@ -138,12 +140,13 @@ public:
 		if (extended == false) {
 			extended = true;
 
-			UnitTestEx ex;
-			UnitTest* _ut = &ex;
-			_assert(_ut->runAll(name()) == UNKNOWN, "throw UNKNOWN");
+			UnitTestDerived::_assert(UnitTestDerived::runAll(name()) == UNKNOWN, "throw UNKNOWN");
 		}
 		else {
-			throw *this;
+			throw* this;
 		}
 	}
+
+	//To match virtual base destructor using noexcept, noexcept(true), or throw()
+	~TestAuto_extended() noexcept {}
 };
