@@ -354,6 +354,7 @@ public:
 		whats = what;
 	}
 
+	//Prevent program termination caused by uncaught exceptions during test object cleanup.
 	virtual ~Unit()
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
 		noexcept(false)
