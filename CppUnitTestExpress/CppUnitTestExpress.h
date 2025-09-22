@@ -38,6 +38,8 @@ Prevents compiler optimization from removing the instantiation
 */
 #if defined(__GNUC__) || defined(__clang__)
 #define FORCE_USED __attribute__((used))
+//#elif defined(_MSC_VER)
+//#define FORCE_USED __declspec(dllexport)
 #else
 #define FORCE_USED
 #endif
@@ -63,39 +65,29 @@ public:
 		#undef SETTING
 	};
 
-	static const char* stateName(STATE state) {
-		#define X(e, s) if(e == state) return #e;
-			UNIT_TEST_STATES
-		#undef X
-		return "";
-	};
-
-	static const char* stageName(STATE state) {
-		#define X(e, s) if(e == state) return s;
-			UNIT_TEST_STATES
-		#undef X
-		return "";
-	};
+	static const char** NAMES(STATE state) {
+		static const char* _names[][2] = {
+			#define X(e,s) {#e, s},
+				UNIT_TEST_STATES
+			#undef X
+		};
+		return _names[state + 3];
+	}
 
 	UnitTest()
 	{
 		units = 0;
 		spent = 0;
-		ended = false;
-		whats = "";
-		where = "";
-		worse = SUCCESS;
+		setState(SETTING);
 	}
 
 	UnitTest(STATE state, std::string what) : UnitTest()
 	{
-		worse = state;
-		whats = what;
+		setState(state, what);
 	}
 
 	~UnitTest() {
-		//Last declared and first destroyed
-		if (ended) {
+		if (runner() == this) {
 			runAll();
 		}
 	}
@@ -121,39 +113,20 @@ public:
 
 	static long usElapse(long usOld)
 	{
+		long long usNow = 0;
+
 		#ifdef _WIN32
-			struct timeval
-			{
-				long tv_sec;
-				long tv_usec;
-			} tv;
-
-			FILETIME time;
-			GetSystemTimeAsFileTime(&time);
-
-			double timed = ((time.dwHighDateTime * 4294967296e-7) - 11644473600.0) +
-				(time.dwLowDateTime * 1e-7);
-
-			tv.tv_sec = (long)timed;
-			tv.tv_usec = (long)((timed - tv.tv_sec) * 1e6);
+			LARGE_INTEGER frequency, counter;
+			QueryPerformanceFrequency(&frequency);
+			QueryPerformanceCounter(&counter);
+			usNow = (counter.QuadPart * 1000000LL) / frequency.QuadPart;
 		#else
-			struct timeval
-			{
-				long tv_sec;
-				long tv_usec;
-			} tv;
-
 			struct timespec ts;
-			clock_gettime(CLOCK_REALTIME, &ts);
-			tv.tv_sec = ts.tv_sec;
-			tv.tv_usec = ts.tv_nsec / 1000;
-			// Handle potential overflow (though unlikely with normal values)
-			if (ts.tv_nsec % 1000 >= 500) {
-				tv.tv_usec += 1;  // Round up if necessary
-			}
+			clock_gettime(CLOCK_MONOTONIC, &ts);
+			usNow = (long long)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
 		#endif
 
-		return (tv.tv_sec * 1000000 + tv.tv_usec - usOld);
+		return (long)(usNow - usOld);
 	}
 
 	/*****************************************************************************
@@ -181,28 +154,28 @@ public:
 	/*****************************************************************************
 	* Test report
 	******************************************************************************/
-	virtual std::string report(std::string stage, STATE state, std::string what)
+	virtual std::string report(std::string where, STATE state, std::string what)
 	{
-		return ssprintf("\t%s : %s - %s\n", stateName(state), stage.c_str(), what.c_str());
+		return ssprintf("\t%s : %s - %s\n", NAMES(state)[0], where.c_str(), what.c_str());
 	}
 
-	virtual void resume(int count, int total, long microseconds, STATE state, std::string reports, std::string wildcard)
+	virtual void resume(int count, int total, long usec, STATE state, std::string whats, std::string match)
 	{
-		std::string sWhich = wildcard.empty() ? "" : "Matching: " + wildcard + "\n";
+		std::string sMatch = match.empty() ? "" : "Matching: " + match + "\n";
 
 		dprintf("\n");
-		dprintf(reports.c_str());
+		dprintf(whats.c_str());
 		dprintf("\t----------------------------------------\n"
-				"\tExecuted: %d/%d %s, %lgs at %s\n"
+				"\tExecuted: %d/%d %s, %.3fs at %s\n"
 				"\tResulted: %s\n"
 				"\t%s\n",
 				count,
 				total,
 				count > 1 ? "units" : "unit",
-				microseconds / 1e6,
+				usec / 1e6,
 				localDate().c_str(),
-				stateName(state),
-				sWhich.c_str());
+				NAMES(state)[0],
+				sMatch.c_str());
 	}
 
 	/*****************************************************************************
@@ -211,7 +184,7 @@ public:
 	//The wildcard characters optionally include ? , *, and ^.
 	int runAll(std::string wildcard = "")
 	{
-		which = wildcard.empty() ? pattern() : wildcard;
+		which = wildcard.empty() ? match() : wildcard;
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++){
@@ -230,7 +203,6 @@ public:
 	static std::string localDate() {
 		time_t ttNow = time(0);
 		struct tm tmDay;
-		memset(&tmDay, 0, sizeof(struct tm));
 
 		#ifdef _WIN32
 		localtime_s(&tmDay, &ttNow);
@@ -238,7 +210,7 @@ public:
 		localtime_r(&ttNow, &tmDay);
 		#endif
 
-		char strDate[sizeof "2022-08-23T10:40:20Z"];
+		char strDate[20];
 		strftime(strDate, sizeof strDate, "%x %H:%M:%S", &tmDay);
 		return strDate;
 	}
@@ -270,26 +242,35 @@ public:
 		return sOut;
 	}
 
-	//The wildcard characters optionally include ? , *, and ^.
+	// The wildcard characters optionally include ? , *, ^ and !.
 	static bool wcMatch(const char* str, const char* wildcard)
 	{
 		if (*wildcard == '\0' && *str == '\0')
 			return true;
 
+		// negate entire str 
+		if (*wildcard == '!' && *(wildcard + 1) != '\0') {
+			return !wcMatch(str, wildcard + 1);
+		}
+
 		if (*wildcard == '*')
 			while (*(wildcard + 1) == '*') wildcard++;
 
-		if (*wildcard == '*' && *(wildcard + 1) != '\0' && *str == '\0')
-			return false;
+		if (*wildcard != '\0' && *str == '\0')
+			return (*wildcard == '*' && *(wildcard + 1) == '\0');
 
 		if (*wildcard == '?' || *wildcard == *str)
 			return wcMatch(str + 1, wildcard + 1);
 
+		// negate first character 
+		if (*wildcard == '^' && *(wildcard + 1) != '\0') {
+			if (*str == *(wildcard + 1))
+				return false;
+			return wcMatch(str + 1, wildcard + 2);
+		}
+
 		if (*wildcard == '*')
 			return wcMatch(str, wildcard + 1) || wcMatch(str + 1, wildcard);
-
-		if (*wildcard == '^')
-			return !wcMatch(str, wildcard + 1);
 
 		return false;
 	}
@@ -298,34 +279,36 @@ public:
 private:
 	int units;
 	long spent;
-	bool ended;
 	STATE worse;
 	std::string whats;
-	std::string where;
 	std::string which;
+	std::string where;
 
-	STATE evolve(STATE state)
-	{
-		if (state > worse) worse = state;
-		return worse;
+	void setState(STATE state, std::string what = "") {
+		worse = state;
+		whats = what;
 	}
 
-	//The wildcard characters optionally include ? , *, and ^.
-	static std::string pattern(std::string wildcard = "") {
-		static std::string _pattern;
+	void addResult(UnitTest& result) {
+		spent += result.spent;
+		whats += report(result.where, result.worse, result.whats);
+		if (result.worse > worse) worse = result.worse;
+	}
+
+	// The wildcard characters optionally include ? , *, ^ and !.
+	static std::string match(std::string wildcard = "") {
+		static std::string _match;
 		if (!wildcard.empty()) {
-			if (_pattern.empty()) {
-				_pattern = wildcard;
+			if (_match.empty()) {
+				_match = wildcard;
 			}
 		}
-		return _pattern;
+		return _match;
 	}
 
-	static void setFinal(UnitTest* ut) {
-		static UnitTest* _final = NULL;
-		if (_final) _final->ended = false;
-		if (ut) ut->ended = true;
-		_final = ut;
+	static UnitTest*& runner() {
+		static UnitTest* _runner = NULL;
+		return _runner;
 	}
 
 	typedef void (*test_func)(UnitTest* _this);
@@ -345,38 +328,44 @@ public:
 	virtual void Test() = 0;
 
 	Unit() {
-		_ut = NULL;
+		// Not thread-safe here
+		_result = _ut;
 		spent = usElapse(0);
 	}
 
-	Unit(STATE state, std::string what) : Unit() {
-		worse = state;
-		whats = what;
+	// The parameter what must be not empty.
+	void setState(STATE state, std::string what) {
+		if (what.empty()) {
+			dprintf("Warning: %s requires a description in %s.\n", name(), NAMES(state)[0]);
+		}
+
+		if (_result) {
+			_result->setState(state, what);
+		}
 	}
 
-	//Prevent program termination caused by uncaught exceptions during test object cleanup.
 	virtual ~Unit()
-	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
-		noexcept(false)
-	#else
-		throw(std::exception)
-	#endif
 	{
 		spent = usElapse(spent);
-		if (_ut) {
-			if (!std::uncaught_exception()) {
-				//Avoid double destruction : the original object and the thrown copy
-				if (_ut->worse < SUCCESS) {
-					_ut->spent = spent;
-					_ut->worse = SUCCESS;
-					_ut->where = name() + stageName(_ut->worse);
-					_ut->whats = ssprintf("%lgs", spent / 1e6);
+		where = name() + NAMES(worse)[1];
+
+		if (_result) {
+			//Avoid double destruction : the original object and the thrown copy
+			if (_result->spent == 0) {
+				_result->spent = spent;
+				_result->where = where;
+
+				if (!std::uncaught_exception()) {
+					if (_result->whats.empty()) {
+						_result->setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
+						_result->where = name() + NAMES(SUCCESS)[1];
+					}
 				}
 			}
 		}
 
-		/* force used */
-		_t;
+		/* FORCE_USED */
+		_ut;
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
@@ -417,72 +406,67 @@ public:
 	}
 
 private:
-	UnitTest* _ut;
+	void runTest() {
+		worse = TESTING;
+		Test();
+		worse = TEARING;
+	}
 
 	static void runTest(UnitTest* _this)
 	{
-		UnitTest::setFinal(NULL);
+		runner() = NULL;
 
 		++_this->units;
-		UnitTest ut;
+		UnitTest result;
+		_ut = &result;
 		try
 		{
-			ut.worse = SETTING;
 			T t;
 
-			ut.worse = TESTING;
 			//To access private method Test()
 			Unit<T>* p = &t;
-			p->Test();
-
-			ut.worse = TEARING;
-			t._ut = &ut;
+			p->runTest();
 		}
 		catch (const UnitTest& e)
 		{
-			ut.where = name() + stageName(ut.worse);
-			ut.worse = e.worse;
-			ut.whats = e.whats;
+			result.setState(e.worse, e.whats);
 		}
 		catch (const std::exception& e)
 		{
-			ut.where = name() + stageName(ut.worse);
-			ut.worse = ANOMALY;
-			ut.whats = e.what();
+			result.setState(ANOMALY, e.what());
 		}
 		catch(...)
 		{
-			ut.where = name() + stageName(ut.worse);
-			ut.worse = UNKNOWN;
-			ut.whats = "unknown exception";
+			result.setState(UNKNOWN, "unknown exception");
 		}
 
-		_this->spent += ut.spent;
-		_this->whats += _this->report(ut.where, ut.worse, ut.whats);
-		_this->evolve(ut.worse);
+		_this->addResult(result);
 	}
 
-	static void setFinal()
+	static void setRunner()
 	{
 		static UnitTest ut;
-		UnitTest::setFinal(&ut);
+		runner() = &ut;
 	}
 
-	static T* initialize()
+	static UnitTest* initialize()
 	{
-		if (std::is_base_of<Only<T>, T>::value) pattern(name());
-		if (std::is_base_of<Skip<T>, T>::value) pattern("^" + name());
+		if (std::is_base_of<Only<T>, T>::value) match(name());
+		if (std::is_base_of<Skip<T>, T>::value) match("!" + name());
 
 		tests()[name()] = runTest;
-		setFinal();
+		//Last declared and first destroyed
+		setRunner();
 		return NULL;
 	}
 
-	static T* FORCE_USED _t;
+	UnitTest* _result;
+
+	static UnitTest* FORCE_USED _ut;
 };
 
 template<class T>
-T* Unit<T>::_t = Unit<T>::initialize();
+UnitTest* Unit<T>::_ut = Unit<T>::initialize();
 
 //Only this test
 template<class T>
@@ -496,7 +480,6 @@ class Skip : public Unit<T> {};
 /// use /Zm to specify a higher limit
 /// 
 /// To access private methods via public abstract interface or using friend
-/// To match virtual base destructor using noexcept, noexcept(true), or throw() 
 ///
 /// Example:
 #if 0
