@@ -184,6 +184,11 @@ public:
 	//The wildcard characters optionally include ? , *, and ^.
 	int runAll(std::string wildcard = "")
 	{
+		units = 0;
+		spent = 0;
+		worse = SETTING;
+		whats = "";
+		where = "";
 		which = wildcard.empty() ? match() : wildcard;
 
 		std::map<std::string, test_func>::iterator it;
@@ -327,43 +332,33 @@ class Unit : public UnitTest {
 public:
 	virtual void Test() = 0;
 
+	void setState(STATE state, std::string what) {
+		if (_result->where.empty()) {
+			_result->where = name() + NAMES(worse)[1];
+			_result->setState(state, what);
+		}
+	}
+
 	Unit() {
 		// Not thread-safe here
 		_result = _ut;
 		spent = usElapse(0);
 	}
 
-	// The parameter what must be not empty.
-	void setState(STATE state, std::string what) {
-		if (what.empty()) {
-			dprintf("Warning: %s requires a description in %s.\n", name(), NAMES(state)[0]);
-		}
-
-		if (_result) {
-			_result->setState(state, what);
-		}
-	}
-
 	virtual ~Unit()
 	{
 		spent = usElapse(spent);
-		where = name() + NAMES(worse)[1];
+		if (!std::uncaught_exception()) {
+			UnitTest::setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
+		}
 
 		if (_result) {
 			//Avoid double destruction : the original object and the thrown copy
 			if (_result->spent == 0) {
 				_result->spent = spent;
-				_result->where = where;
-
-				if (!std::uncaught_exception()) {
-					if (_result->whats.empty()) {
-						_result->setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
-						_result->where = name() + NAMES(SUCCESS)[1];
-					}
-				}
+				setState(worse, whats);
 			}
 		}
-
 		/* FORCE_USED */
 		_ut;
 	}
@@ -407,9 +402,9 @@ public:
 
 private:
 	void runTest() {
-		worse = TESTING;
+		UnitTest::setState(TESTING);
 		Test();
-		worse = TEARING;
+		UnitTest::setState(TEARING);
 	}
 
 	static void runTest(UnitTest* _this)
@@ -419,6 +414,7 @@ private:
 		++_this->units;
 		UnitTest result;
 		_ut = &result;
+
 		try
 		{
 			T t;
