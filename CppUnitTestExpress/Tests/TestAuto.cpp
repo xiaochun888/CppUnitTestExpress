@@ -11,10 +11,19 @@
 #define VALUES \
 V(3.14f, 3.14, 3)
 
-class TestAuto_ctor : public Unit<TestAuto_ctor> {
+class TestAuto_ctor1 : public Unit<TestAuto_ctor1> {
 public:
-	TestAuto_ctor() {
-		throw *this;
+	TestAuto_ctor1() {
+		setState(SETTING, "setState()");
+	}
+
+	void Test() {}
+};
+
+class TestAuto_ctor2 : public Unit<TestAuto_ctor2> {
+public:
+	TestAuto_ctor2() {
+		throw* this;
 	}
 
 	void Test() {}
@@ -24,16 +33,21 @@ class TestAuto_dtor : public Unit<TestAuto_dtor> {
 public:
 	~TestAuto_dtor() {
 		//Here throw *this is an error on destruction;
-		setState(TEARING, "throw UnitTest(worse, whats)");
+		setState(TEARING, "setState()");
 	}
 
-	void Test() { setState(TESTING, ""); }
+	void Test() {}
 };
 
-class TestAuto_Test : public Unit<TestAuto_Test> {
+class TestAuto_Test1 : public Unit<TestAuto_Test1> {
 public:
-	TestAuto_Test() {}
+	void Test() {
+		setState(TESTING, "setState()");
+	}
+};
 
+class TestAuto_Test2 : public Unit<TestAuto_Test2> {
+public:
 	void Test() {
 		throw *this;
 	}
@@ -138,8 +152,12 @@ public:
 			extended = true;
 
 			UnitTestDerived::_assert(UnitTestDerived::runAll(name()) == UNKNOWN, "throw UNKNOWN");
+			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_ctor?") == SETTING, "throw SETTING");
+			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_Test*") == TESTING, "throw TESTING");
+			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_dtor") == TEARING, "throw TEARING");
 		}
 		else {
+			//UnitTest instances duplicated -> UNKNOWN
 			throw *this;
 		}
 	}
