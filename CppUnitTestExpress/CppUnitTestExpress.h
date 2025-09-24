@@ -341,7 +341,7 @@ public:
 
 	Unit() {
 		// Not thread-safe here
-		_result = _ut;
+		_result = _car;
 		spent = usElapse(0);
 	}
 
@@ -360,7 +360,7 @@ public:
 			}
 		}
 		/* FORCE_USED */
-		_ut;
+		_car;
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
@@ -413,7 +413,7 @@ private:
 
 		++_this->units;
 		UnitTest result;
-		_ut = &result;
+		_car = &result;
 
 		try
 		{
@@ -458,11 +458,11 @@ private:
 
 	UnitTest* _result;
 
-	static UnitTest* FORCE_USED _ut;
+	static UnitTest* FORCE_USED _car;
 };
 
 template<class T>
-UnitTest* Unit<T>::_ut = Unit<T>::initialize();
+UnitTest* Unit<T>::_car = Unit<T>::initialize();
 
 //Only this test
 template<class T>
