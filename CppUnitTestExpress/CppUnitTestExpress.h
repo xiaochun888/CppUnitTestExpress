@@ -352,13 +352,12 @@ public:
 			UnitTest::setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
 		}
 
-		if (_result) {
-			//Avoid double destruction : the original object and the thrown copy
-			if (_result->spent == 0) {
-				_result->spent = spent;
-				setState(worse, whats);
-			}
+		//Avoid double destruction : the original object and the thrown copy
+		if (_result->spent == 0) {
+			_result->spent = spent;
+			setState(worse, whats);
 		}
+
 		/* FORCE_USED */
 		_car;
 	}
