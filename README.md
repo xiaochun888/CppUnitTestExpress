@@ -12,7 +12,7 @@ It is designed to let users focus on writing test scenarios. Each test unit is a
 
 1. Only a header file, only use C++ compiler.
 2. Any member method or function can be tested.
-3. No concept to learn, no heavy documentation, just an assertion tool.
+3. No concept to learn, no heavy documentation, just one assertion tool.
 4. No config, no test macro, no graphic interface, no extrernal library.
 5. Can run a test unit or group by wildcard name.
 6. Extended easily and integrated easily into an application.
