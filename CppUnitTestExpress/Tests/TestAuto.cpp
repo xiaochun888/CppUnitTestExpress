@@ -14,7 +14,7 @@ V(3.14f, 3.14, 3)
 class TestAuto_ctor1 : public Unit<TestAuto_ctor1> {
 public:
 	TestAuto_ctor1() {
-		setState(SETTING, "setState()");
+		setResult(SETTING, "setResult()");
 	}
 
 	void Test() {}
@@ -33,7 +33,7 @@ class TestAuto_dtor : public Unit<TestAuto_dtor> {
 public:
 	~TestAuto_dtor() {
 		//Here throw *this is an error on destruction;
-		setState(TEARING, "setState()");
+		setResult(TEARING, "setResult()");
 	}
 
 	void Test() {}
@@ -42,7 +42,7 @@ public:
 class TestAuto_Test1 : public Unit<TestAuto_Test1> {
 public:
 	void Test() {
-		setState(TESTING, "setState()");
+		setResult(TESTING, "setResult()");
 	}
 };
 
