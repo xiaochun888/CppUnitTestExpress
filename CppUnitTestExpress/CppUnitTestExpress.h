@@ -253,7 +253,7 @@ public:
 		if (*wildcard == '\0' && *str == '\0')
 			return true;
 
-		// negate entire str 
+		// negate entire str
 		if (*wildcard == '!' && *(wildcard + 1) != '\0') {
 			return !wcMatch(str, wildcard + 1);
 		}
@@ -267,7 +267,7 @@ public:
 		if (*wildcard == '?' || *wildcard == *str)
 			return wcMatch(str + 1, wildcard + 1);
 
-		// negate first character 
+		// negate first character
 		if (*wildcard == '^' && *(wildcard + 1) != '\0') {
 			if (*str == *(wildcard + 1))
 				return false;
@@ -324,15 +324,15 @@ private:
 	}
 };
 
-template <class T> class Only;
-template <class T> class Skip;
+//Only this test
+class Only {};
 
 template<class T>
 class Unit : public UnitTest {
 public:
 	virtual void Test() = 0;
 
-	void setState(STATE state, std::string what) {
+	void setResult(STATE state, std::string what) {
 		if (_result->where.empty()) {
 			_result->where = name() + NAMES(worse)[1];
 			_result->setState(state, what);
@@ -355,7 +355,7 @@ public:
 		//Avoid double destruction : the original object and the thrown copy
 		if (_result->spent == 0) {
 			_result->spent = spent;
-			setState(worse, whats);
+			setResult(worse, whats);
 		}
 
 		/* FORCE_USED */
@@ -446,8 +446,7 @@ private:
 
 	static UnitTest* initialize()
 	{
-		if (std::is_base_of<Only<T>, T>::value) match(name());
-		if (std::is_base_of<Skip<T>, T>::value) match("!" + name());
+		if (std::is_base_of<Only, T>::value) match(name());
 
 		tests()[name()] = runTest;
 		//Last declared and first destroyed
@@ -462,14 +461,6 @@ private:
 
 template<class T>
 UnitTest* Unit<T>::_car = Unit<T>::initialize();
-
-//Only this test
-template<class T>
-class Only : public Unit<T> {};
-
-//Skip this test
-template<class T>
-class Skip : public Unit<T> {};
 
 /// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
