@@ -401,9 +401,9 @@ public:
 
 private:
 	void runTest() {
-		UnitTest::setState(TESTING);
+		setState(TESTING);
 		Test();
-		UnitTest::setState(TEARING);
+		setState(TEARING);
 	}
 
 	static void runTest(UnitTest* _this)
