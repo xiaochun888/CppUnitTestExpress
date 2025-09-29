@@ -349,7 +349,7 @@ public:
 	{
 		spent = usElapse(spent);
 		if (!std::uncaught_exception()) {
-			UnitTest::setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
+			setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
 		}
 
 		//Avoid double destruction : the original object and the thrown copy
