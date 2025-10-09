@@ -63,10 +63,10 @@ class TestAuto_usElapse : public Unit<TestAuto_usElapse> {
 	void Test() {
 		long us = usElapse(0);
 		SLEEP(1);
-		long seconds = usElapse(us) / 1e6;
+		long seconds = (long)(usElapse(us) / 1e6);
 		_assert(seconds == 1, "Time elapsed shouble be 1s but %lds.", seconds);
 		SLEEP(1);
-		seconds = usElapse(us) / 1e6;
+		seconds = (long)(usElapse(us) / 1e6);
 		_assert(seconds == 2, "Time elapsed shouble be 2s but %lds.", seconds);
 	}
 };
