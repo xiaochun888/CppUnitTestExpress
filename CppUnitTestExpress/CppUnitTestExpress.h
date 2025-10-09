@@ -193,11 +193,23 @@ public:
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++){
-			if(which.empty() || wcMatch(it->first.c_str(), which.c_str())) {
+			bool matched = true;
+
+			std::string str = which;
+			char* token = strtok((char*)str.c_str(), ";");
+			while (token != NULL && matched) {
+				if (strlen(token) > 0) {
+					matched = wcMatch(it->first.c_str(), token);
+				}
+				token = strtok(NULL, ";");
+			}
+
+			if (matched) {
 				it->second(this);
 			}
 		}
 
+		if (units == 0) worse = SUCCESS;
 		resume(units, tests().size(), spent, worse, whats, which);
 		return worse;
 	}
@@ -304,8 +316,13 @@ private:
 	static std::string match(std::string wildcard = "") {
 		static std::string _match;
 		if (!wildcard.empty()) {
-			if (_match.empty()) {
-				_match = wildcard;
+			if(_match.empty()) _match = wildcard;
+			else {
+				if (_match.find_first_of("?*^!") != std::string::npos) {
+					if (wildcard.find_first_of("?*^!") != std::string::npos)
+						_match += ";" + wildcard;
+					else _match = wildcard; // Only
+				}
 			}
 		}
 		return _match;
@@ -326,6 +343,8 @@ private:
 
 //Only this test
 class Only {};
+//Skip this test
+class Skip {};
 
 template<class T>
 class Unit : public UnitTest {
@@ -447,6 +466,7 @@ private:
 	static UnitTest* initialize()
 	{
 		if (std::is_base_of<Only, T>::value) match(name());
+		if (std::is_base_of<Skip, T>::value) match("!" + name());
 
 		tests()[name()] = runTest;
 		//Last declared and first destroyed
@@ -510,3 +530,4 @@ int main(int argc, char* argv[])
 }
 #endif
 #endif //_CPP_UNIT_TEST_EXPRESS_H_
+
