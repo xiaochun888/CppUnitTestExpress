@@ -44,7 +44,7 @@ Prevents compiler optimization from removing the instantiation
 #define FORCE_USED
 #endif
 
-#define UNIT_TEST_STATES \
+#define UNIT_TEST_STATES(X) \
 X(SETTING, "::ctor()") \
 X(TESTING, "::Test()") \
 X(TEARING, "::dtor()") \
@@ -60,7 +60,7 @@ public:
 		SETTING = -3
 		#define X(e, s) e,
 		#define SETTING
-			UNIT_TEST_STATES
+			UNIT_TEST_STATES(X)
 		#undef X
 		#undef SETTING
 	};
@@ -68,7 +68,7 @@ public:
 	static const char** NAMES(STATE state) {
 		static const char* _names[][2] = {
 			#define X(e,s) {#e, s},
-				UNIT_TEST_STATES
+				UNIT_TEST_STATES(X)
 			#undef X
 		};
 		return _names[state + 3];
@@ -341,14 +341,14 @@ private:
 	}
 };
 
-//Only this test
-class Only {};
-//Skip this test
-class Skip {};
-
 template<class T>
 class Unit : public UnitTest {
 public:
+	//Only this test
+	class Only {};
+	//Skip this test
+	class Skip {};
+
 	virtual void Test() = 0;
 
 	void setResult(STATE state, std::string what) {
@@ -383,15 +383,16 @@ public:
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
 		
-		//Match integral, floating point, boolean, char or enum.
-		template <typename A, typename std::enable_if<!std::is_base_of<std::string, A>::value>::type* = nullptr>
-		static A c_val(const A& value)
+		//Match integral, floating point, boolean, char, enum, char*, char[] and const char*.
+		template <typename A, 
+				  typename std::enable_if<!std::is_base_of<std::string, typename std::decay<A>::type>::value>::type* = nullptr>
+		static const A& c_val(const A& value)
 		{
 			//nested type using typename
 			return value;
 		}
 
-		//Match std::string, const char* or char[].
+		//Match std::string.
 		static const char* c_val(const std::string& value)
 		{
 			return value.c_str();
