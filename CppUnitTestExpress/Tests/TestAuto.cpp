@@ -14,7 +14,7 @@ V(3.14f, 3.14, 3)
 class TestAuto_ctor1 : public Unit<TestAuto_ctor1> {
 public:
 	TestAuto_ctor1() {
-		setResult(SETTING, "setResult()");
+		setState(SETTING, "setResult()", STAGE(SETTING));
 	}
 
 	void Test() {}
@@ -33,7 +33,7 @@ class TestAuto_dtor : public Unit<TestAuto_dtor> {
 public:
 	~TestAuto_dtor() {
 		//Here throw *this is an error on destruction;
-		setResult(TEARING, "setResult()");
+		setState(TEARING, "setResult()", STAGE(TEARING));
 	}
 
 	void Test() {}
@@ -42,7 +42,7 @@ public:
 class TestAuto_Test1 : public Unit<TestAuto_Test1> {
 public:
 	void Test() {
-		setResult(TESTING, "setResult()");
+		setState(TESTING, "setResult()", STAGE(TESTING));
 	}
 };
 
@@ -63,11 +63,21 @@ class TestAuto_usElapse : public Unit<TestAuto_usElapse> {
 	void Test() {
 		long us = usElapse(0);
 		SLEEP(1);
-		long seconds = (long)(usElapse(us) / 1e6);
+		long seconds = usElapse(us) / 1e6;
 		_assert(seconds == 1, "Time elapsed shouble be 1s but %lds.", seconds);
 		SLEEP(1);
-		seconds = (long)(usElapse(us) / 1e6);
+		seconds = usElapse(us) / 1e6;
 		_assert(seconds == 2, "Time elapsed shouble be 2s but %lds.", seconds);
+	}
+};
+
+class TestAuto_split : public Unit<TestAuto_split> {
+	void Test() {
+		const char* str = "test*;test?;test^o;;;;";
+		std::vector<std::string> tokens;
+		split(str, ';', tokens);
+		_assert(tokens.size() == 3, "The number of Takens shouble be 3.");
+		_assert(tokens[2] == "test^o", "The taken shouble be \"test^o\".");
 	}
 };
 
@@ -122,7 +132,7 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 class UnitTestDerived : public UnitTest {
 public:
 	virtual std::string report(std::string where, STATE state, std::string what) {
-		return ssprintf("%s : %s - %s\n", NAMES(state)[0], where.c_str(), what.c_str());
+		return ssprintf("%s : %s - %s\n", STATUS(state), where.c_str(), what.c_str());
 	}
 
 	virtual void resume(int count, int total, long usec, STATE state, std::string whats, std::string match) {
@@ -139,7 +149,7 @@ public:
 			count > 1 ? "units" : "unit",
 			usec / 1e6,
 			localDate().c_str(),
-			NAMES(state)[0],
+			STATUS(state),
 			sMatch.c_str());
 	}
 };
