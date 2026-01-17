@@ -27,7 +27,7 @@
 #include <typeinfo>
 #include <string>
 #include <map>
-
+#include <vector>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -44,34 +44,49 @@ Prevents compiler optimization from removing the instantiation
 #define FORCE_USED
 #endif
 
+/**
+* X(state, stage)
+*/
 #define UNIT_TEST_STATES(X) \
-X(SETTING, "::ctor()") \
-X(TESTING, "::Test()") \
-X(TEARING, "::dtor()") \
+X(SETTING, "ctor()") \
+X(TESTING, "Test()") \
+X(TEARING, "dtor()") \
 X(SUCCESS, "") \
 X(ANOMALY, "") \
 X(UNKNOWN, "") \
 X(FAILURE, "")
+
+#define STR(x) #x
 
 class UnitTest
 {
 public:
 	enum STATE {
 		SETTING = -3
-		#define X(e, s) e,
+		#define X(state, stage) state,
 		#define SETTING
 			UNIT_TEST_STATES(X)
 		#undef X
 		#undef SETTING
 	};
 
-	static const char** NAMES(STATE state) {
-		static const char* _names[][2] = {
-			#define X(e,s) {#e, s},
+
+	static const char* STATUS(STATE state) {
+		static const char* _states[] = {
+			#define X(state, stage) #state,
 				UNIT_TEST_STATES(X)
 			#undef X
 		};
-		return _names[state + 3];
+		return _states[state + 3];
+	}
+
+	static const char* STAGE(STATE state) {
+		static const char* _stages[] = {
+			#define X(state, stage) stage,
+				UNIT_TEST_STATES(X)
+			#undef X
+		};
+		return _stages[state + 3];
 	}
 
 	UnitTest()
@@ -79,6 +94,11 @@ public:
 		units = 0;
 		spent = 0;
 		setState(SETTING);
+	}
+
+	UnitTest(std::string name) : UnitTest()
+	{
+		title = name;
 	}
 
 	UnitTest(STATE state, std::string what) : UnitTest()
@@ -93,6 +113,25 @@ public:
 	}
 
 	/*****************************************************************************
+	* Test suite
+	* wildcard characters : ? , *, ^ and !
+	******************************************************************************/
+	static std::string suite(std::string wildcard = "") {
+		static std::string _pattern;
+		if (!wildcard.empty()) {
+			if (_pattern.empty()) _pattern = wildcard;
+			else {
+				if (_pattern.find_first_of("?*^!") != std::string::npos) {
+					if (wildcard.find_first_of("?*^!") != std::string::npos)
+						_pattern += ";" + wildcard;
+					else _pattern = wildcard; // Only
+				}
+			}
+		}
+		return _pattern;
+	}
+
+	/*****************************************************************************
 	* Test tools
 	******************************************************************************/
 	static void dprintf(const char* format, ...)
@@ -101,13 +140,19 @@ public:
 		{
 			va_list args;
 			va_start(args, format);
-			vprintf(format, args);
-
-			#if defined(_WIN32)
-				OutputDebugStringA(vssprintf(format, args).c_str());
-			#endif
-
+			int size = vprintf(format, args);
 			va_end(args);
+
+			if (size > 0) {
+				std::string sOut(size, '\0');
+				va_start(args, format);
+				vsnprintf(&sOut[0], size + 1, format, args);
+				va_end(args);
+
+				#if defined(_WIN32)
+					OutputDebugStringA(sOut.c_str());
+				#endif
+			}
 		};
 	}
 
@@ -138,30 +183,45 @@ public:
 	{
 		if (!expression)
 		{
-			std::string what;
 			if (shouldbe)
 			{
 				va_list args;
 				va_start(args, shouldbe);
-				what = vssprintf(shouldbe, args);
+				int size = vsnprintf(0, 0, shouldbe, args);
 				va_end(args);
+
+				if (size > 0) {
+					std::string what(size, '\0');
+					va_start(args, shouldbe);
+					vsnprintf(&what[0], size + 1, shouldbe, args);
+					va_end(args);
+					throw UnitTest(FAILURE, what);
+				}
 			};
 
-			throw UnitTest(FAILURE, what);
+			throw UnitTest(FAILURE, "");
 		};
 	}
 
 	/*****************************************************************************
-	* Test report
+	* Test state and report
 	******************************************************************************/
+	void setState(STATE state, std::string what = "", std::string when = "") {
+		if (issue.empty()) {
+			worse = state;
+			whats = what;
+			issue = when;
+		}
+	}
+
 	virtual std::string report(std::string where, STATE state, std::string what)
 	{
-		return ssprintf("\t%s : %s - %s\n", NAMES(state)[0], where.c_str(), what.c_str());
+		return ssprintf("\t%s : %s - %s\n", STATUS(state), where.c_str(), what.c_str());
 	}
 
 	virtual void resume(int count, int total, long usec, STATE state, std::string whats, std::string match)
 	{
-		std::string sMatch = match.empty() ? "" : "Matching: " + match + "\n";
+		std::string pattern = match.empty() ? "" : "SetSuite: " + match + "\n";
 
 		dprintf("\n");
 		dprintf(whats.c_str());
@@ -174,8 +234,8 @@ public:
 				count > 1 ? "units" : "unit",
 				usec / 1e6,
 				localDate().c_str(),
-				NAMES(state)[0],
-				sMatch.c_str());
+				STATUS(state),
+				pattern.c_str());
 	}
 
 	/*****************************************************************************
@@ -188,20 +248,19 @@ public:
 		spent = 0;
 		worse = SETTING;
 		whats = "";
-		where = "";
-		which = wildcard.empty() ? match() : wildcard;
+		issue = "";
+		which = wildcard.empty() ? suite() : wildcard;
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++){
 			bool matched = true;
 
 			std::string str = which;
-			char* token = strtok((char*)str.c_str(), ";");
-			while (token != NULL && matched) {
-				if (strlen(token) > 0) {
-					matched = wcMatch(it->first.c_str(), token);
-				}
-				token = strtok(NULL, ";");
+			std::vector<std::string> tokens;
+			split(str, ';', tokens);
+
+			for (size_t i = 0; i < tokens.size() && matched; ++i) {
+				matched = wcMatch(it->first.c_str(), tokens[i].c_str());
 			}
 
 			if (matched) {
@@ -232,64 +291,66 @@ public:
 		return strDate;
 	}
 
-	static std::string vssprintf(const char* format, va_list args)
-	{
-		std::string sOut;
-		if (format)
-		{
-			int size = vsnprintf(0, 0, format, args) + 1;
-			char* buf = new char[size];
-			vsnprintf(buf, size, format, args);
-			sOut = buf;
-			delete[] buf;
-		};
-		return sOut;
-	}
-
 	static std::string ssprintf(const char* format, ...)
 	{
-		std::string sOut;
 		if (format)
 		{
 			va_list args;
 			va_start(args, format);
-			sOut = vssprintf(format, args);
+			int size = vsnprintf(0, 0, format, args);
 			va_end(args);
+
+			if (size > 0) {
+				std::string sOut(size, '\0');
+				va_start(args, format);
+				vsnprintf(&sOut[0], size + 1, format, args);
+				va_end(args);
+				return sOut;
+			}
 		};
-		return sOut;
+		return "";
+	}
+
+	static void split(const std::string& s, char delim, std::vector<std::string>& out)
+	{
+		out.clear();
+
+		size_t start = 0;
+		size_t end;
+
+		while ((end = s.find(delim, start)) != std::string::npos) {
+			if (end > start) {
+				out.push_back(s.substr(start, end - start));
+			}
+			start = end + 1;
+		}
+
+		if (start < s.size()) {
+			out.push_back(s.substr(start));
+		}
 	}
 
 	// The wildcard characters optionally include ? , *, ^ and !.
-	static bool wcMatch(const char* str, const char* wildcard)
+	static bool wcMatch(const char* str, const char* wc)
 	{
-		if (*wildcard == '\0' && *str == '\0')
-			return true;
-
-		// negate entire str
-		if (*wildcard == '!' && *(wildcard + 1) != '\0') {
-			return !wcMatch(str, wildcard + 1);
+		switch (*wc)
+		{
+		case '\0':
+			return *str == '\0';
+		case '!': // negate entire pattern
+			return wc[1] ? !wcMatch(str, wc + 1) : false;
+		case '*': // any sequence
+			while (wc[1] == '*') ++wc;
+			if (wc[1] == '\0') return true;
+			return (*str && wcMatch(str + 1, wc)) || wcMatch(str, wc + 1);
+		case '^': // single-character negation
+			if (!wc[1] || !*str || *str == wc[1]) return false;
+			return wcMatch(str + 1, wc + 2);
+		case '?': // any single character
+			return *str && wcMatch(str + 1, wc + 1);
+		default: // literal character
+			return (*str == *wc) && wcMatch(str + 1, wc + 1);
 		}
-
-		if (*wildcard == '*')
-			while (*(wildcard + 1) == '*') wildcard++;
-
-		if (*wildcard != '\0' && *str == '\0')
-			return (*wildcard == '*' && *(wildcard + 1) == '\0');
-
-		if (*wildcard == '?' || *wildcard == *str)
-			return wcMatch(str + 1, wildcard + 1);
-
-		// negate first character
-		if (*wildcard == '^' && *(wildcard + 1) != '\0') {
-			if (*str == *(wildcard + 1))
-				return false;
-			return wcMatch(str + 1, wildcard + 2);
-		}
-
-		if (*wildcard == '*')
-			return wcMatch(str, wildcard + 1) || wcMatch(str + 1, wildcard);
-
-		return false;
 	}
 
 	template <class T> friend class Unit;
@@ -299,33 +360,16 @@ private:
 	STATE worse;
 	std::string whats;
 	std::string which;
-	std::string where;
-
-	void setState(STATE state, std::string what = "") {
-		worse = state;
-		whats = what;
-	}
+	std::string issue;
+	std::string title;
 
 	void addResult(UnitTest& result) {
-		spent += result.spent;
-		whats += report(result.where, result.worse, result.whats);
-		if (result.worse > worse) worse = result.worse;
-	}
+		std::string where = result.title;
+		if(!result.issue.empty()) where += "::" + result.issue;
 
-	// The wildcard characters optionally include ? , *, ^ and !.
-	static std::string match(std::string wildcard = "") {
-		static std::string _match;
-		if (!wildcard.empty()) {
-			if(_match.empty()) _match = wildcard;
-			else {
-				if (_match.find_first_of("?*^!") != std::string::npos) {
-					if (wildcard.find_first_of("?*^!") != std::string::npos)
-						_match += ";" + wildcard;
-					else _match = wildcard; // Only
-				}
-			}
-		}
-		return _match;
+		spent += result.spent;
+		whats += report(where, result.worse, result.whats);
+		if (result.worse > worse) worse = result.worse;
 	}
 
 	static UnitTest*& runner() {
@@ -345,40 +389,30 @@ template<class T>
 class Unit : public UnitTest {
 public:
 	//Only this test
-	class Only {};
+	class Only : public Unit {};
 	//Skip this test
-	class Skip {};
+	class Skip : public Unit {};
 
 	virtual void Test() = 0;
 
-	void setResult(STATE state, std::string what) {
-		if (_result->where.empty()) {
-			_result->where = name() + NAMES(worse)[1];
-			_result->setState(state, what);
-		}
-	}
-
 	Unit() {
-		// Not thread-safe here
-		_result = _car;
 		spent = usElapse(0);
 	}
 
 	virtual ~Unit()
 	{
+		//Attention: double destruction : the original object and the thrown copy
+
 		spent = usElapse(spent);
 		if (!std::uncaught_exception()) {
-			setState(SUCCESS, ssprintf("%.3fs", spent / 1e6));
-		}
-
-		//Avoid double destruction : the original object and the thrown copy
-		if (_result->spent == 0) {
-			_result->spent = spent;
-			setResult(worse, whats);
+			setState(SUCCESS, ssprintf("%.3fs", spent / 1e6), STAGE(SUCCESS));
+			if (pResult) {
+				pResult->setState(worse, whats, issue);
+			}
 		}
 
 		/* FORCE_USED */
-		_car;
+		_pax;
 	}
 
 	#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L) //>=C++11
@@ -420,39 +454,36 @@ public:
 	}
 
 private:
-	void runTest() {
-		setState(TESTING);
-		Test();
-		setState(TEARING);
-	}
 
 	static void runTest(UnitTest* _this)
 	{
 		runner() = NULL;
 
 		++_this->units;
-		UnitTest result;
-		_car = &result;
+		UnitTest result(name());
 
 		try
-		{
-			T t;
+		{	T t;
 
 			//To access private method Test()
 			Unit<T>* p = &t;
-			p->runTest();
+
+			p->setState(TESTING); //throw *this
+			result.setState(TESTING); //where
+			p->Test();
+			p->pResult = &result;
 		}
 		catch (const UnitTest& e)
 		{
-			result.setState(e.worse, e.whats);
+			result.setState(e.worse, e.whats, STAGE(result.worse));
 		}
 		catch (const std::exception& e)
 		{
-			result.setState(ANOMALY, e.what());
+			result.setState(ANOMALY, e.what(), STAGE(result.worse));
 		}
 		catch(...)
 		{
-			result.setState(UNKNOWN, "unknown exception");
+			result.setState(UNKNOWN, "unknown exception", STAGE(result.worse));
 		}
 
 		_this->addResult(result);
@@ -466,8 +497,8 @@ private:
 
 	static UnitTest* initialize()
 	{
-		if (std::is_base_of<Only, T>::value) match(name());
-		if (std::is_base_of<Skip, T>::value) match("!" + name());
+		if (std::is_base_of<Only, T>::value) suite(name());
+		if (std::is_base_of<Skip, T>::value) suite("!" + name());
 
 		tests()[name()] = runTest;
 		//Last declared and first destroyed
@@ -475,13 +506,13 @@ private:
 		return NULL;
 	}
 
-	UnitTest* _result;
+	UnitTest* pResult;
 
-	static UnitTest* FORCE_USED _car;
+	static UnitTest* FORCE_USED _pax;
 };
 
 template<class T>
-UnitTest* Unit<T>::_car = Unit<T>::initialize();
+UnitTest* Unit<T>::_pax = Unit<T>::initialize();
 
 /// For VC++ 6.0, the default internal heap limit(/Zm100,50MB) can reach to 1259 tests in total; 
 /// use /Zm to specify a higher limit
@@ -531,4 +562,3 @@ int main(int argc, char* argv[])
 }
 #endif
 #endif //_CPP_UNIT_TEST_EXPRESS_H_
-
