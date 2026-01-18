@@ -38,6 +38,27 @@ class TestMinimal : public Unit<TestMinimal>
 	}
 };
 
+/* Or only this test is executed. */
+class TestMinimal : public Unit<TestMinimal>::Only
+{
+	void Test()
+	{
+		_assert(true,"Should be true.");
+	}
+};
+
+/* Or skip this test. */
+class TestMinimal : public Unit<TestMinimal>::Skip
+{
+	void Test()
+	{
+		_assert(true,"Should be true.");
+	}
+};
+
+/* Or add a test suite with wild card parttern. */
+UnitTest::Suite("Test*");
+
 /* Run the unit test. */
 int main(int argc, char* argv[])
 {
