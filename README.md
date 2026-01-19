@@ -56,7 +56,7 @@ class TestMinimal : public Unit<TestMinimal>::Skip
 	}
 };
 
-/* Or add a test suite with wild card parttern. */
+/* Or add a test suite with wild card pattern. */
 UnitTest::Suite("Test*");
 
 /* Run the unit test. */
