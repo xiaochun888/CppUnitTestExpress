@@ -38,7 +38,7 @@ class TestMinimal : public Unit<TestMinimal>
 	}
 };
 
-/* Or only this test is executed. */
+/* Only this test is executed. */
 class TestMinimal : public Unit<TestMinimal>::Only
 {
 	void Test()
@@ -47,7 +47,7 @@ class TestMinimal : public Unit<TestMinimal>::Only
 	}
 };
 
-/* Or skip this test. */
+/* Skip this test. */
 class TestMinimal : public Unit<TestMinimal>::Skip
 {
 	void Test()
@@ -55,9 +55,6 @@ class TestMinimal : public Unit<TestMinimal>::Skip
 		_assert(true,"Should be true.");
 	}
 };
-
-/* Or add a test suite with wild card pattern. */
-UnitTest::Suite("Test*");
 
 /* 2) Run the unit test. */
 int main(int argc, char* argv[])
