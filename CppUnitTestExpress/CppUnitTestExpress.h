@@ -56,8 +56,6 @@ X(ANOMALY, "") \
 X(UNKNOWN, "") \
 X(FAILURE, "")
 
-#define STR(x) #x
-
 class UnitTest
 {
 public:
