@@ -273,19 +273,12 @@ public:
 	/*****************************************************************************
 	* Utilities
 	******************************************************************************/
-	static std::string localDate() {
-		time_t ttNow = time(0);
-		struct tm tmDay;
-
-		#ifdef _WIN32
-		localtime_s(&tmDay, &ttNow);
-		#else
-		localtime_r(&ttNow, &tmDay);
-		#endif
-
-		char strDate[20];
-		strftime(strDate, sizeof strDate, "%x %H:%M:%S", &tmDay);
-		return strDate;
+	static std::string localDate()
+	{
+		time_t now = time(0);
+		char buf[20];
+		strftime(buf, sizeof(buf), "%x %H:%M:%S", localtime(&now));
+		return buf;
 	}
 
 	static std::string ssprintf(const char* format, ...)
