@@ -29,7 +29,7 @@ The below code snippet demonstrates the least amount of code required to write a
 /* Add this header file into your project */
 #include "CppUnitTestExpress.h"
 
-/* Write a test unit given a name. */
+/* 1) Write a test unit given a name. */
 class TestMinimal : public Unit<TestMinimal>
 {
 	void Test()
@@ -59,13 +59,13 @@ class TestMinimal : public Unit<TestMinimal>::Skip
 /* Or add a test suite with wild card pattern. */
 UnitTest::Suite("Test*");
 
-/* Run the unit test. */
+/* 2) Run the unit test. */
 int main(int argc, char* argv[])
 {
 	return 0;
 }
 
-/* Display the result of test . */
+/* 3) Display the result of test . */
 	SUCCESS : TestMinimal - 0s
 	----------------------------------------
 	Executed: 1 unit, 0s at 2025-01-12 20:30:47
