@@ -248,15 +248,14 @@ public:
 		whats = "";
 		issue = "";
 		which = wildcard.empty() ? suite() : wildcard;
-
+		
+		std::string str = which;
+		std::vector<std::string> tokens;
+		split(str, ';', tokens);
+		
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++){
 			bool matched = true;
-
-			std::string str = which;
-			std::vector<std::string> tokens;
-			split(str, ';', tokens);
-
 			for (size_t i = 0; i < tokens.size() && matched; ++i) {
 				matched = wcMatch(it->first.c_str(), tokens[i].c_str());
 			}
