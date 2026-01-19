@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include <time.h>
+#include <ctime>
 #include <typeinfo>
 #include <string>
 #include <map>
