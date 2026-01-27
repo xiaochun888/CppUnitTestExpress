@@ -26,10 +26,10 @@ static void _assert(const A& expression, const char* shouldbe=0, ...);
 
 The below code snippet demonstrates the least amount of code required to write an executable test: 
 ```
-/* Add this header file into your project */
+/* 1.Add this header file into your project */
 #include "CppUnitTestExpress.h"
 
-/* 1) Write a test unit given a name. */
+/* 2. Write a test unit given a name. */
 class TestMinimal : public Unit<TestMinimal>
 {
 	void Test()
@@ -56,13 +56,13 @@ class TestMinimal : public Unit<TestMinimal>::Skip
 	}
 };
 
-/* 2) Run the unit test. */
+/* 3. Run the unit test. */
 int main(int argc, char* argv[])
 {
 	return 0;
 }
 
-/* 3) Display the result of test . */
+/* The result of test is displayed. */
 	SUCCESS : TestMinimal - 0s
 	----------------------------------------
 	Executed: 1 unit, 0s at 2025-01-12 20:30:47
