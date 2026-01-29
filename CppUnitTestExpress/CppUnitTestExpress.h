@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <locale.h>
 #include <ctime>
 #include <typeinfo>
 #include <string>
@@ -275,6 +276,8 @@ public:
 	******************************************************************************/
 	static std::string localDate()
 	{
+		// use environment's locale for %x
+		setlocale(LC_TIME, "");
 		time_t now = time(0);
 		char buf[20];
 		strftime(buf, sizeof(buf), "%x %H:%M:%S", localtime(&now));
