@@ -257,8 +257,9 @@ public:
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++){
 			bool matched = true;
-			for (size_t i = 0; i < tokens.size() && matched; ++i) {
+			for (size_t i = 0; i < tokens.size(); ++i) {
 				matched = wcMatch(it->first.c_str(), tokens[i].c_str());
+				if (matched) break;
 			}
 
 			if (matched) {
