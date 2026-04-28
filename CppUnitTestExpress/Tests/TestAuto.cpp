@@ -14,7 +14,7 @@ V(3.14f, 3.14, 3)
 class TestAuto_ctor1 : public Unit<TestAuto_ctor1> {
 public:
 	TestAuto_ctor1() {
-		setState(SETTING, "setResult()", STAGE(SETTING));
+		reject("reject()");
 	}
 
 	void Test() {}
@@ -33,7 +33,7 @@ class TestAuto_dtor : public Unit<TestAuto_dtor> {
 public:
 	~TestAuto_dtor() {
 		//Here throw *this is an error on destruction;
-		setState(TEARING, "setResult()", STAGE(TEARING));
+		reject("reject()");
 	}
 
 	void Test() {}
@@ -42,7 +42,7 @@ public:
 class TestAuto_Test1 : public Unit<TestAuto_Test1> {
 public:
 	void Test() {
-		setState(TESTING, "setResult()", STAGE(TESTING));
+		reject("reject()");
 	}
 };
 
@@ -53,9 +53,57 @@ public:
 	}
 };
 
-class TestAuto_enum_STATE : public Unit<TestAuto_enum_STATE> {
+class TestAuto_eSTATE : public Unit<TestAuto_eSTATE> {
 	void Test() {
-		_assert(SUCCESS == 0, "STATE.SUCCESS shouble be 0.");
+		_assert(SUCCESS == 0, "eSTATE.SUCCESS shouble be 0 for exit.");
+	}
+};
+
+class TestAuto_split : public Unit<TestAuto_split> {
+	void Test() {
+		std::vector<std::string> suits[4];
+		std::string empty[4] = { "" ,";" ,";;" ,";;;" };
+		for (int i = 0; i < 4; i++) {
+			split(empty[i], ';', suits[i]);
+		}
+
+		_assert(suits[0].size() == 0, "Should be 0 token");
+		_assert(suits[1].size() == 0, "Should be 0 tokens");
+		_assert(suits[2].size() == 0, "Should be 0 tokens");
+		_assert(suits[3].size() == 0, "Should be 0 tokens");
+
+		std::string suit[4] = { "suit" ,"suit;suit" ,"suit;suit;suit" ,"suit;suit;suit;suit" };
+		suits->clear();
+		for (int i = 0; i < 4; i++) {
+			split(suit[i], ';', suits[i]);
+		}
+
+		_assert(suits[0].size() == 1, "Should be 1 token");
+		_assert(suits[1].size() == 2, "Should be 2 tokens");
+		_assert(suits[2].size() == 3, "Should be 3 tokens");
+		_assert(suits[3].size() == 4, "Should be 4 tokens");
+
+		std::string lack[4] = { "suit" ,"suit;" ,"suit;;suit" ,"suit;;suit;suit" };
+		suits->clear();
+		for (int i = 0; i < 4; i++) {
+			split(lack[i], ';', suits[i]);
+		}
+
+		_assert(suits[0].size() == 1, "Should be 1 token");
+		_assert(suits[1].size() == 1, "Should be 1 token");
+		_assert(suits[2].size() == 2, "Should be 2 tokens");
+		_assert(suits[3].size() == 3, "Should be 3 tokens");
+
+		//Texte espace[4] = { " " ," ; " ," ; ; " ," ; ; ; " };
+		//suits->clear();
+		//for (int i = 0; i < 4; i++) {
+		//	split(espace[i], ';', suits[i]);
+		//}
+
+		//_assert(suits[0].size() == 1, "Should be 1 token");
+		//_assert(suits[1].size() == 2, "Should be 2 token");
+		//_assert(suits[2].size() == 3, "Should be 3 token");
+		//_assert(suits[3].size() == 4, "Should be 4 token");
 	}
 };
 
@@ -63,21 +111,11 @@ class TestAuto_usElapse : public Unit<TestAuto_usElapse> {
 	void Test() {
 		long us = usElapse(0);
 		SLEEP(1);
-		long seconds = usElapse(us) / 1e6;
+		long seconds = (long)(usElapse(us) / 1e6);
 		_assert(seconds == 1, "Time elapsed shouble be 1s but %lds.", seconds);
 		SLEEP(1);
-		seconds = usElapse(us) / 1e6;
+		seconds = (long)(usElapse(us) / 1e6);
 		_assert(seconds == 2, "Time elapsed shouble be 2s but %lds.", seconds);
-	}
-};
-
-class TestAuto_split : public Unit<TestAuto_split> {
-	void Test() {
-		const char* str = "test*;test?;test^o;;;;";
-		std::vector<std::string> tokens;
-		split(str, ';', tokens);
-		_assert(tokens.size() == 3, "The number of Takens shouble be 3.");
-		_assert(tokens[2] == "test^o", "The taken shouble be \"test^o\".");
 	}
 };
 
@@ -131,26 +169,24 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 
 class UnitTestDerived : public UnitTest {
 public:
-	virtual std::string report(std::string where, STATE state, std::string what) {
+	virtual std::string report(eSTATE state, std::string where, std::string what) {
 		return ssprintf("%s : %s - %s\n", STATUS(state), where.c_str(), what.c_str());
 	}
 
-	virtual void resume(int count, int total, long usec, STATE state, std::string whats, std::string match) {
-		std::string sMatch = match.empty() ? "" : "Matching: " + match + "\n";
-
+	virtual void resume(int count, int total, long usec, eSTATE state, std::string reports, std::string filters) {
 		dprintf("\n");
-		dprintf(whats.c_str());
+		dprintf(reports.c_str());
 		dprintf("----------------------------------------\n"
 			"Executed: %d/%d %s, %.3fs at %s\n"
 			"Resulted: %s\n"
-			"%s\n",
+			"Filtered: %s\n",
 			count,
 			total,
 			count > 1 ? "units" : "unit",
 			usec / 1e6,
 			localDate().c_str(),
-			STATUS(state),
-			sMatch.c_str());
+			STATUS(state).label,
+			filters.c_str());
 	}
 };
 
@@ -161,14 +197,14 @@ public:
 		if (extended == false) {
 			extended = true;
 
-			UnitTestDerived::_assert(UnitTestDerived::runAll(name()) == UNKNOWN, "throw UNKNOWN");
+			UnitTestDerived::_assert(UnitTestDerived::runAll(name()) == TESTING, "throw TESTING");
 			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_ctor?") == SETTING, "throw SETTING");
 			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_Test*") == TESTING, "throw TESTING");
 			UnitTestDerived::_assert(UnitTestDerived::runAll("TestAuto_dtor") == TEARING, "throw TEARING");
 		}
 		else {
-			//UnitTest instances duplicated -> UNKNOWN
 			throw *this;
 		}
 	}
 };
+
