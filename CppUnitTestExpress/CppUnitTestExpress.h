@@ -61,7 +61,7 @@ X(FAILURE, "")
 class UnitTest : public std::exception
 {
 public:
-	enum eSTATE {
+	enum STATE {
 		SETTING = -3
 		#define X(state, stage) state,
 		#define SETTING
@@ -75,20 +75,21 @@ public:
 		const char* stage;
 	} Colonne;
 
-	static Colonne STATUS(eSTATE state) {
-		static Colonne _states[] = {
-			#define X(state, stage) {#state, stage},
-				UNIT_TEST_STATES(X)
-			#undef X
-		};
-		return _states[state + 3];
+	static Colonne STATUS(STATE state) {
+		switch (state) {
+		#define X(status, stage) case status: return {#status, stage};
+			UNIT_TEST_STATES(X)
+		#undef X
+		default:
+			return {};
+		}
 	}
 
 	UnitTest() : units(0), spent(0), worse(SETTING) {}
 
 	UnitTest(std::string name) : UnitTest() { title = name; }
 
-	UnitTest(eSTATE state, std::string what) : UnitTest() { setState(state, what); }
+	UnitTest(STATE state, std::string what) : UnitTest() { setState(state, what); }
 
 	virtual ~UnitTest() { if (runner() == this) runAll(); }
 
@@ -177,12 +178,12 @@ public:
 	/*****************************************************************************
 	* Report / Resume
 	******************************************************************************/
-	virtual std::string report(eSTATE state, std::string where, std::string what)
+	virtual std::string report(STATE state, std::string where, std::string what)
 	{
 		return ssprintf("\t%s : %s - %s\n", STATUS(state).label, where.c_str(), what.c_str());
 	}
 
-	virtual void resume(int count, int total, long usec, eSTATE state, std::string reports, std::string filters)
+	virtual void resume(int count, int total, long usec, STATE state, std::string reports, std::string filters)
 	{
 		dprintf("\n");
 		dprintf(reports.c_str());
@@ -216,14 +217,19 @@ public:
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++) {
+			bool bRun = false;
 			for (size_t i = 0; i < tokens.size(); ++i) {
 				if (wcMatch(it->first.c_str(), tokens[i].c_str())) {
-					it->second(this);
-					break;
+					bRun = true;
+				}
+				else {
+					if ('!' == tokens[i][0]) {
+						bRun = false; //Skip
+						break;
+					}
 				}
 			}
-
-			if(tokens.size() == 0) it->second(this);
+			if(bRun || tokens.size() == 0) it->second(this);
 		}
 
 		if (units == 0) worse = SUCCESS;
@@ -240,15 +246,7 @@ public:
 		setlocale(LC_TIME, "");
 		time_t now = time(0);
 		char buf[20];
-		struct tm timeinfo;
-
-#ifdef _MSC_VER
-		localtime_s(&timeinfo, &now);
-#else
-		localtime_r(&now, &timeinfo);
-#endif
-
-		strftime(buf, sizeof(buf), "%x %H:%M:%S", &timeinfo);
+		strftime(buf, sizeof(buf), "%x %H:%M:%S", localtime(&now));
 		return buf;
 	}
 
@@ -299,10 +297,10 @@ public:
 private:
 	int units;
 	long spent;
-	eSTATE worse;
+	STATE worse;
 	std::string whats, which, issue, title;
 
-	bool setState(eSTATE state, std::string what = "", std::string stage = "") {
+	bool setState(STATE state, std::string what = "", std::string stage = "") {
 		if (issue.empty()) {
 			worse = state;
 			whats = what;
@@ -323,18 +321,18 @@ private:
 
 	// Wildcards separated by ';'
 	static std::string suite(std::string wildcard = "") {
-		static std::string _pattern;
+		static std::string _filters;
 		if (!wildcard.empty()) {
-			if (_pattern.empty()) _pattern = wildcard;
+			if (_filters.empty()) _filters = wildcard;
 			else {
-				if (_pattern.find_first_of("?*^!") != std::string::npos) {
+				if (_filters.find_first_of("?*^!") != std::string::npos) {
 					if (wildcard.find_first_of("?*^!") != std::string::npos)
-						_pattern += ";" + wildcard;
-					else _pattern = wildcard; // Only
+						_filters += ";" + wildcard;
+					else _filters = wildcard; // Only
 				}
 			}
 		}
-		return _pattern;
+		return _filters;
 	}
 
 	static UnitTest*& runner() {
@@ -473,8 +471,10 @@ private:
 
 	static UnitTest* initialize()
 	{
-		if (std::is_base_of<Only, T>::value) suite(name());
-		if (std::is_base_of<Skip, T>::value) suite("!" + name());
+		if (std::is_base_of<Only, T>::value)
+			suite(name());
+		if (std::is_base_of<Skip, T>::value)
+			suite("!" + name());
 
 		tests()[name()] = runTest;
 		//Last declared and first destroyed
