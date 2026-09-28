@@ -53,9 +53,9 @@ public:
 	}
 };
 
-class TestAuto_eSTATE : public Unit<TestAuto_eSTATE> {
+class TestAuto_STATE : public Unit<TestAuto_STATE> {
 	void Test() {
-		_assert(SUCCESS == 0, "eSTATE.SUCCESS shouble be 0 for exit.");
+		_assert(SUCCESS == 0, "STATE.SUCCESS shouble be 0 for exit.");
 	}
 };
 
@@ -169,11 +169,11 @@ class TestAuto_dprintf_assert_c11 : public Unit<TestAuto_dprintf_assert_c11> {
 
 class UnitTestDerived : public UnitTest {
 public:
-	virtual std::string report(eSTATE state, std::string where, std::string what) {
+	virtual std::string report(STATE state, std::string where, std::string what) {
 		return ssprintf("%s : %s - %s\n", STATUS(state), where.c_str(), what.c_str());
 	}
 
-	virtual void resume(int count, int total, long usec, eSTATE state, std::string reports, std::string filters) {
+	virtual void resume(int count, int total, long usec, STATE state, std::string reports, std::string filters) {
 		dprintf("\n");
 		dprintf(reports.c_str());
 		dprintf("----------------------------------------\n"
