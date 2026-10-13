@@ -217,19 +217,22 @@ public:
 
 		std::map<std::string, test_func>::iterator it;
 		for (it = tests().begin(); it != tests().end(); it++) {
-			bool bRun = false;
+			int iRun = -1;
 			for (size_t i = 0; i < tokens.size(); ++i) {
-				if (wcMatch(it->first.c_str(), tokens[i].c_str())) {
-					bRun = true;
-				}
-				else {
-					if ('!' == tokens[i][0]) {
-						bRun = false; //Skip
+				if ('!' == tokens[i][0]) { //Skip
+					if (!wcMatch(it->first.c_str(), tokens[i].c_str())) {
+						iRun = 0;
 						break;
 					}
 				}
+				else { //or(||)
+					if (!wcMatch(it->first.c_str(), tokens[i].c_str())) {
+						if (iRun == -1) iRun = 0;
+					}
+					else iRun = 1;
+				}
 			}
-			if(bRun || tokens.size() == 0) it->second(this);
+			if (iRun != 0) it->second(this);
 		}
 
 		if (units == 0) worse = SUCCESS;
