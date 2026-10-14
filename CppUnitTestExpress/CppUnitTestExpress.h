@@ -383,6 +383,7 @@ public:
 		if (!std::uncaught_exception()) {
 			setState(SUCCESS, ssprintf("%.3fs", spent / 1e6), STATUS(SUCCESS).stage);
 			if (pResult) {
+				pResult->spent = spent;
 				pResult->setState(worse, whats, issue);
 			}
 		}
